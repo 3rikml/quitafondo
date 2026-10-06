@@ -1,31 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { paintBrushStroke, paintSmartBrushStroke, createSmartBrushScratch } from "../RetouchToolbar";
+import { paintBrushStroke } from "../RetouchToolbar";
 import { NO_OVERRIDE, createOverrideBuffer } from "@/lib/image/alphaCompose";
-import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 
 const WIDTH = 40;
 const HEIGHT = 40;
-
-/** A square of `fillColor`, with a `patchColor` square inset at `(px, py)` sized `patchSize`. */
-function buildPixels(fillColor: [number, number, number, number], patch?: {
-  x: number;
-  y: number;
-  size: number;
-  color: [number, number, number, number];
-}): PixelBuffer {
-  const data = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
-  for (let i = 0; i < WIDTH * HEIGHT; i++) {
-    data.set(fillColor, i * 4);
-  }
-  if (patch) {
-    for (let y = patch.y; y < patch.y + patch.size; y++) {
-      for (let x = patch.x; x < patch.x + patch.size; x++) {
-        data.set(patch.color, (y * WIDTH + x) * 4);
-      }
-    }
-  }
-  return { width: WIDTH, height: HEIGHT, data };
-}
 
 describe("paintBrushStroke — hardness", () => {
   it("hardness=1 reproduces the original hard-edged binary circle exactly", () => {

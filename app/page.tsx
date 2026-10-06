@@ -11,10 +11,12 @@ import {
   Sparkles,
   TriangleAlert,
   Undo2,
+  X,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { createOverrideBuffer } from "@/lib/image/alphaCompose";
 import { clampCropBox, type BoundingBox } from "@/lib/image/boundingBox";
 import type { BackgroundConfig, CanvasConfig } from "@/lib/types";
@@ -35,6 +37,9 @@ import {
 } from "@/components/Editor/RetouchToolbar";
 import { upscaleImage } from "@/hooks/useImageUpscale";
 import { ExportPanel } from "@/components/Editor/ExportPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { IconButton } from "@/components/IconButton";
+import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 const ZOOM_MIN = 0.25;
@@ -106,6 +111,12 @@ export default function Home() {
   const [retouchTolerance, setRetouchTolerance] = useState(30);
   const [retouchVersion, setRetouchVersion] = useState(0);
   const [zoom, setZoom] = useState(1);
+  // Below the `lg` breakpoint the image list and the edit panel become
+  // slide-over drawers instead of permanent side columns (there's no room
+  // for three columns on a phone) — these track whether each is open. They
+  // have no effect at `lg` and up, where both asides are always visible.
+  const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
+  const [mobileRightOpen, setMobileRightOpen] = useState(false);
   // Bumped whenever a job's undo/redo stack changes, purely so the
   // undo/redo buttons re-render enabled/disabled — the stacks themselves
   // live in a ref and don't otherwise trigger React updates.
@@ -220,12 +231,29 @@ export default function Home() {
     saveSelectedJobId(selectedJobId);
   }, [selectedJobId]);
 
-  // Switching images mid-crop would otherwise keep editing a rectangle that
-  // belongs to the job the user just navigated away from.
+  // Closes whichever mobile drawer is open on Escape, matching the backdrop
+  // click and the in-drawer close button.
   useEffect(() => {
+    if (!mobileLeftOpen && !mobileRightOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setMobileLeftOpen(false);
+      setMobileRightOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileLeftOpen, mobileRightOpen]);
+
+  // Switching images mid-crop would otherwise keep editing a rectangle that
+  // belongs to the job the user just navigated away from. Resetting during
+  // render (the "adjusting state when a prop changes" pattern) instead of in
+  // an effect avoids an extra commit.
+  const [lastSelectedJobId, setLastSelectedJobId] = useState(selectedJobId);
+  if (selectedJobId !== lastSelectedJobId) {
+    setLastSelectedJobId(selectedJobId);
     setCropMode(false);
     setCropDraft(null);
-  }, [selectedJobId]);
+  }
 
   // Positions the resize handles on the subject's actual on-screen corners.
   // Needs the real DOM <canvas> (for its rendered box) AND EditorCanvas's
@@ -258,6 +286,7 @@ export default function Home() {
   // subject box, and only while the crop tool is actually open.
   useEffect(() => {
     if (!cropMode || !cropDraft) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronizing with the DOM canvas's measured size, not derivable during render
       setCropHandleRect(null);
       return;
     }
@@ -487,6 +516,7 @@ export default function Home() {
     return (e: React.PointerEvent<HTMLButtonElement | HTMLDivElement>) => {
       e.stopPropagation();
       if (!cropDraft) return;
+      // eslint-disable-next-line react-hooks/refs -- this write only runs inside the returned pointerdown closure (an event handler), never during render
       cropDragRef.current = {
         pointerId: e.pointerId,
         mode,
@@ -647,6 +677,7 @@ export default function Home() {
   // depending on it) is what makes this recompute when the ref-backed stacks
   // change, since mutating a ref alone doesn't trigger a re-render.
   const { canUndo, canRedo } = useMemo(() => {
+    // eslint-disable-next-line react-hooks/refs -- read intentionally: historyVersion (below) forces a recompute whenever this ref-backed stack actually changes
     const history = selectedJob ? historyByJobIdRef.current.get(selectedJob.id) : undefined;
     return { canUndo: (history?.past.length ?? 0) > 0, canRedo: (history?.future.length ?? 0) > 0 };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- historyVersion is a synthetic dependency: the stacks live in a ref, not in state
@@ -730,14 +761,25 @@ export default function Home() {
 
   return (
     <main className="flex h-screen flex-col">
-      <header className="flex items-center gap-3 border-b px-5 py-3.5">
+      <header className="flex items-center gap-3 border-b px-4 py-3.5 sm:px-5">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Scissors className="size-4" strokeWidth={2.25} />
         </span>
-        <div className="leading-tight">
+        <div className="min-w-0 leading-tight">
           <h1 className="font-heading text-lg font-semibold tracking-tight">QuitaFondo</h1>
-          <p className="text-xs text-muted-foreground">Quita fondos de tus imágenes, 100% local y privado.</p>
+          <p className="hidden text-xs text-muted-foreground sm:block">
+            Quita fondos de tus imágenes, 100% local y privado.
+          </p>
         </div>
+        <div className="ml-auto flex items-center gap-1 lg:hidden">
+          <IconButton label="Ver imágenes" onClick={() => setMobileLeftOpen(true)}>
+            <ImagePlus />
+          </IconButton>
+          <IconButton label="Ver controles de edición" onClick={() => setMobileRightOpen(true)}>
+            <SlidersHorizontal />
+          </IconButton>
+        </div>
+        <ThemeToggle className="lg:ml-auto" />
       </header>
 
       {!isSupported && (
@@ -751,14 +793,35 @@ export default function Home() {
         </p>
       )}
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="w-72 shrink-0 overflow-y-auto border-r p-4">
+      <div className="relative flex flex-1 overflow-hidden">
+        {mobileLeftOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setMobileLeftOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-[85vw] max-w-xs overflow-y-auto border-r bg-background p-4 shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:w-72 lg:max-w-none lg:translate-x-0 lg:shadow-none",
+            mobileLeftOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          <div className="mb-3 flex items-center justify-between lg:hidden">
+            <h2 className="text-sm font-semibold">Imágenes</h2>
+            <IconButton label="Cerrar" onClick={() => setMobileLeftOpen(false)}>
+              <X />
+            </IconButton>
+          </div>
           <ImageDropzone onFilesSelected={handleFilesSelected} />
           <div className="mt-5">
             <BatchQueue
               jobs={jobs}
               selectedJobId={selectedJobId}
-              onSelectJob={setSelectedJobId}
+              onSelectJob={(id) => {
+                setSelectedJobId(id);
+                setMobileLeftOpen(false);
+              }}
               onRetryJob={retryJob}
               onRemoveJob={handleRemoveJob}
               getRetouchOverride={(jobId) => overridesByJobIdRef.current.get(jobId)}
@@ -766,43 +829,37 @@ export default function Home() {
           </div>
         </aside>
 
-        <section className="relative flex flex-1 items-center justify-center overflow-auto bg-muted/30 p-8">
+        <section className="relative flex flex-1 items-center justify-center overflow-auto bg-muted/30 p-4 lg:p-8">
           {selectedJob?.status === "done" && selectedJob.cutoutBlob ? (
             <>
               <div className="absolute top-4 right-4 z-10 flex items-center gap-0.5 rounded-lg border bg-background/95 p-1 shadow-sm">
-                <Button
-                  size="icon"
-                  variant="ghost"
+                <IconButton
+                  label="Alejar"
                   className="size-7"
                   disabled={zoom <= ZOOM_MIN}
                   onClick={() => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100))}
-                  aria-label="Alejar"
                 >
                   <ZoomOut />
-                </Button>
+                </IconButton>
                 <span className="w-11 text-center text-xs tabular-nums text-muted-foreground">
                   {Math.round(zoom * 100)}%
                 </span>
-                <Button
-                  size="icon"
-                  variant="ghost"
+                <IconButton
+                  label="Acercar"
                   className="size-7"
                   disabled={zoom >= ZOOM_MAX}
                   onClick={() => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100))}
-                  aria-label="Acercar"
                 >
                   <ZoomIn />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
+                </IconButton>
+                <IconButton
+                  label="Restablecer zoom (100%)"
                   className="size-7"
                   disabled={zoom === 1}
                   onClick={() => setZoom(1)}
-                  aria-label="Restablecer zoom (100%)"
                 >
                   <RotateCcw />
-                </Button>
+                </IconButton>
               </div>
               <div
                 onPointerDown={handlePointerDown}
@@ -897,102 +954,132 @@ export default function Home() {
           )}
         </section>
 
-        <aside className="w-80 shrink-0 overflow-y-auto border-l p-4">
+        {mobileRightOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+            onClick={() => setMobileRightOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <aside
+          className={cn(
+            "fixed inset-y-0 right-0 z-50 w-[85vw] max-w-xs overflow-y-auto border-l bg-background p-4 shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:w-80 lg:max-w-none lg:translate-x-0 lg:shadow-none",
+            mobileRightOpen ? "translate-x-0" : "translate-x-full"
+          )}
+        >
+          <div className="mb-3 flex items-center justify-between lg:hidden">
+            <h2 className="text-sm font-semibold">Editar</h2>
+            <IconButton label="Cerrar" onClick={() => setMobileRightOpen(false)}>
+              <X />
+            </IconButton>
+          </div>
           {selectedJob?.status === "done" ? (
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-1.5">
-                <Button size="sm" variant="outline" className="self-start" onClick={handleReplaceImageClick}>
-                  <Replace />
-                  Reemplazar imagen
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Usa la misma foto/fondo/tamaño configurados, solo cambia la imagen fuente.
-                </p>
-                {replaceError && <p className="text-xs text-destructive">{replaceError}</p>}
-                <input
-                  ref={replaceFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleReplaceFileChosen}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="self-start"
-                  onClick={handleImproveQuality}
-                  disabled={isUpscaling}
-                >
-                  <Sparkles />
-                  {isUpscaling ? "Mejorando…" : "Mejorar calidad (IA)"}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Duplica la resolución y afina el detalle con IA, luego vuelve a quitar el fondo. Puede tardar unos
-                  segundos.
-                </p>
-                {upscaleError && <p className="text-xs text-destructive">{upscaleError}</p>}
-              </div>
-              <Separator />
-              <BackgroundPanel
-                key={selectedJob.id}
-                value={selectedJob.background}
-                onChange={handleBackgroundChange}
-                onApplyToAll={applyBackgroundToAll}
-              />
-              <Separator />
-              <CanvasSizePanel
-                value={selectedJob.canvas}
-                onChange={(canvas) => updateJob(selectedJob.id, { canvas })}
-                onApplyToAll={applyCanvasConfigToAll}
-                cropActive={cropMode}
-                onStartCrop={handleStartCrop}
-                onApplyCrop={handleApplyCrop}
-                onCancelCrop={handleCancelCrop}
-                onResetCropDraft={handleResetCropDraft}
-                onClearCrop={handleClearCrop}
-              />
-              <Separator />
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Historial</h3>
-                <div className="flex gap-1.5">
-                  <Button size="sm" variant="outline" disabled={!canUndo} onClick={undo} aria-label="Deshacer (Ctrl+Z)">
-                    <Undo2 />
+            <div className="flex flex-col gap-4">
+              <Card size="sm" className="gap-3 p-3">
+                <div className="flex flex-col gap-1.5">
+                  <Button size="sm" variant="outline" className="self-start" onClick={handleReplaceImageClick}>
+                    <Replace />
+                    Reemplazar imagen
                   </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Usa la misma foto/fondo/tamaño configurados, solo cambia la imagen fuente.
+                  </p>
+                  {replaceError && <p className="text-xs text-destructive">{replaceError}</p>}
+                  <input
+                    ref={replaceFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleReplaceFileChosen}
+                  />
+                </div>
+                <Separator />
+                <div className="flex flex-col gap-1.5">
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={!canRedo}
-                    onClick={redo}
-                    aria-label="Rehacer (Ctrl+Shift+Z)"
+                    className="self-start"
+                    onClick={handleImproveQuality}
+                    disabled={isUpscaling}
                   >
-                    <Redo2 />
+                    <Sparkles />
+                    {isUpscaling ? "Mejorando…" : "Mejorar calidad (IA)"}
                   </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Duplica la resolución y afina el detalle con IA, luego vuelve a quitar el fondo. Puede tardar unos
+                    segundos.
+                  </p>
+                  {upscaleError && <p className="text-xs text-destructive">{upscaleError}</p>}
                 </div>
-              </div>
-              <RetouchToolbar
-                active={retouchActive}
-                onActiveChange={setRetouchActive}
-                mode={retouchMode}
-                onModeChange={setRetouchMode}
-                brushSize={brushSize}
-                onBrushSizeChange={setBrushSize}
-                hardness={brushHardness}
-                onHardnessChange={setBrushHardness}
-                smart={smartRetouch}
-                onSmartChange={setSmartRetouch}
-                tolerance={retouchTolerance}
-                onToleranceChange={setRetouchTolerance}
-              />
-              <Separator />
-              <ExportPanel
-                value={selectedJob.exportConfig}
-                onChange={(exportConfig) => updateJob(selectedJob.id, { exportConfig })}
-                onApplyToAll={applyExportConfigToAll}
-                getRenderedPixelBuffer={() => canvasHandleRef.current?.getRenderedPixelBuffer() ?? null}
-                fileNameBase={selectedJob.fileName.replace(/\.[^.]+$/, "")}
-              />
+              </Card>
+
+              <Card size="sm" className="p-3">
+                <BackgroundPanel
+                  key={selectedJob.id}
+                  value={selectedJob.background}
+                  onChange={handleBackgroundChange}
+                  onApplyToAll={applyBackgroundToAll}
+                />
+              </Card>
+
+              <Card size="sm" className="p-3">
+                <CanvasSizePanel
+                  value={selectedJob.canvas}
+                  onChange={(canvas) => updateJob(selectedJob.id, { canvas })}
+                  onApplyToAll={applyCanvasConfigToAll}
+                  cropActive={cropMode}
+                  onStartCrop={handleStartCrop}
+                  onApplyCrop={handleApplyCrop}
+                  onCancelCrop={handleCancelCrop}
+                  onResetCropDraft={handleResetCropDraft}
+                  onClearCrop={handleClearCrop}
+                />
+              </Card>
+
+              <Card size="sm" className="gap-3 p-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Historial</h3>
+                  <div className="flex gap-1.5">
+                    <IconButton label="Deshacer (Ctrl+Z)" size="icon-sm" variant="outline" disabled={!canUndo} onClick={undo}>
+                      <Undo2 />
+                    </IconButton>
+                    <IconButton
+                      label="Rehacer (Ctrl+Shift+Z)"
+                      size="icon-sm"
+                      variant="outline"
+                      disabled={!canRedo}
+                      onClick={redo}
+                    >
+                      <Redo2 />
+                    </IconButton>
+                  </div>
+                </div>
+                <Separator />
+                <RetouchToolbar
+                  active={retouchActive}
+                  onActiveChange={setRetouchActive}
+                  mode={retouchMode}
+                  onModeChange={setRetouchMode}
+                  brushSize={brushSize}
+                  onBrushSizeChange={setBrushSize}
+                  hardness={brushHardness}
+                  onHardnessChange={setBrushHardness}
+                  smart={smartRetouch}
+                  onSmartChange={setSmartRetouch}
+                  tolerance={retouchTolerance}
+                  onToleranceChange={setRetouchTolerance}
+                />
+              </Card>
+
+              <Card size="sm" className="p-3">
+                <ExportPanel
+                  value={selectedJob.exportConfig}
+                  onChange={(exportConfig) => updateJob(selectedJob.id, { exportConfig })}
+                  onApplyToAll={applyExportConfigToAll}
+                  getRenderedPixelBuffer={() => canvasHandleRef.current?.getRenderedPixelBuffer() ?? null}
+                  fileNameBase={selectedJob.fileName.replace(/\.[^.]+$/, "")}
+                />
+              </Card>
             </div>
           ) : (
             <div className="flex max-w-56 flex-col items-center gap-3 py-10 text-center">

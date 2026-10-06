@@ -6,6 +6,7 @@ import type { ImageJob } from "@/lib/types";
 import { buildZipFromBlobs } from "@/lib/image/zipExport";
 import { renderJobToBlob } from "@/lib/image/renderJob";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/IconButton";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -157,15 +158,14 @@ export function BatchQueue({
                     Reintentar
                   </Button>
                 )}
-                <Button
+                <IconButton
+                  label={`Quitar ${job.fileName} de la lista`}
                   size="sm"
-                  variant="ghost"
                   className="text-muted-foreground hover:text-destructive"
                   onClick={() => onRemoveJob(job.id)}
-                  aria-label={`Quitar ${job.fileName} de la lista`}
                 >
                   <Trash2 />
-                </Button>
+                </IconButton>
               </div>
             </li>
           );

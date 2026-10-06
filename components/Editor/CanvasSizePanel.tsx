@@ -17,6 +17,7 @@ import { normalizeRotationDeg } from "@/lib/image/canvasFit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 
@@ -158,6 +159,8 @@ export function CanvasSizePanel({
         </div>
       )}
 
+      <Separator />
+
       <div className="flex items-center justify-between">
         <Label className="flex items-center gap-1.5">
           <Crop className="size-3.5" />
@@ -198,6 +201,8 @@ export function CanvasSizePanel({
           </div>
         </div>
       )}
+
+      <Separator />
 
       <div className="flex items-center justify-between">
         <Label className="flex items-center gap-1.5">
@@ -252,6 +257,8 @@ export function CanvasSizePanel({
           }}
         />
       </div>
+
+      <Separator />
 
       <div className="flex items-center justify-between">
         <Label className="flex items-center gap-1.5">
