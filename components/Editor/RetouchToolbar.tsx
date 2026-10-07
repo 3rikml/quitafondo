@@ -1,11 +1,12 @@
 "use client";
 
 import { Eraser, PaintbrushVertical, Wand2 } from "lucide-react";
+import type { PixelBuffer } from "@/lib/image/pixelBuffer";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 
 export type RetouchMode = "erase" | "restore";
 
@@ -47,10 +48,14 @@ export function RetouchToolbar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Retoque manual</h3>
-        <Button size="sm" variant={active ? "default" : "outline"} onClick={() => onActiveChange(!active)}>
-          <Wand2 />
-          {active ? "Retocando" : "Activar"}
+        <h3 className="text-sm font-semibold">Editar recorte</h3>
+        <Button
+          size="sm"
+          variant={active ? "default" : "outline"}
+          onClick={() => onActiveChange(!active)}
+        >
+          <Wand2 className="size-4" />
+          {active ? "Desactivar" : "Editar recorte"}
         </Button>
       </div>
 
@@ -63,7 +68,7 @@ export function RetouchToolbar({
               onClick={() => onModeChange("erase")}
               className="flex-1"
             >
-              <Eraser />
+              <Eraser className="size-4" />
               Borrar
             </Button>
             <Button
@@ -72,12 +77,15 @@ export function RetouchToolbar({
               onClick={() => onModeChange("restore")}
               className="flex-1"
             >
-              <PaintbrushVertical />
+              <PaintbrushVertical className="size-4" />
               Restaurar
             </Button>
           </div>
+
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Tamaño de pincel ({brushSize}px)</span>
+            <span className="text-xs text-muted-foreground">
+              Tamaño de pincel ({brushSize}px)
+            </span>
             <Slider
               min={4}
               max={120}
@@ -89,9 +97,12 @@ export function RetouchToolbar({
               }}
             />
           </div>
+
           {!smart && (
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Dureza del pincel ({Math.round(hardness * 100)}%)</span>
+              <span className="text-xs text-muted-foreground">
+                Dureza del pincel ({Math.round(hardness * 100)}%)
+              </span>
               <Slider
                 min={0}
                 max={100}
@@ -104,23 +115,30 @@ export function RetouchToolbar({
               />
             </div>
           )}
+
           <div className="flex items-center justify-between">
             <Label htmlFor="smart-retouch" className="text-xs text-muted-foreground">
               Detección automática de bordes
             </Label>
-            <Switch id="smart-retouch" checked={smart} onCheckedChange={onSmartChange} />
+            <Switch
+              id="smart-retouch"
+              checked={smart}
+              onCheckedChange={onSmartChange}
+            />
           </div>
           {smart && (
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">Sensibilidad ({tolerance}%)</span>
+              <span className="text-xs text-muted-foreground">
+                Sensibilidad ({tolerance}%)
+              </span>
               <Slider
                 min={1}
                 max={100}
                 step={1}
                 value={[tolerance]}
                 onValueChange={(values) => {
-                  const value = Array.isArray(values) ? values[0] : values;
-                  onToleranceChange(value);
+                  const t = Array.isArray(values) ? values[0] : values;
+                  onToleranceChange(t);
                 }}
               />
             </div>
@@ -298,19 +316,38 @@ export function paintSmartBrushStroke(
  * pixel coordinates, accounting for the canvas's on-screen scaling (CSS size
  * vs. `canvas.width`/`height`) AND the fit transform `EditorCanvas` applied
  * when drawing the source image (see `EditorCanvasHandle.getFit()`). Plain
- * function, not a hook: callers already have `fit` fresh from a ref read at
- * event time, so no memoization/dependency tracking is needed.
+ * division by CSS scale is not enough because the source image is also
+ * scaled/translated/rotated inside the canvas by `fit.scale`,
+ * `fit.offsetX`, `fit.offsetY`, and `fit.rotationDeg`.
  */
 export function canvasToSourceCoords(
   canvas: HTMLCanvasElement,
-  fit: { scale: number; offsetX: number; offsetY: number },
+  fit: { scale: number; offsetX: number; offsetY: number; rotationDeg: number; anchorX: number; anchorY: number },
   clientX: number,
   clientY: number
 ): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
-  const canvasX = ((clientX - rect.left) / rect.width) * canvas.width;
-  const canvasY = ((clientY - rect.top) / rect.height) * canvas.height;
-  const sourceX = (canvasX - fit.offsetX) / fit.scale;
-  const sourceY = (canvasY - fit.offsetY) / fit.scale;
+  const cssX = clientX - rect.left;
+  const cssY = clientY - rect.top;
+
+  const canvasX = cssX * (canvas.width / rect.width);
+  const canvasY = cssY * (canvas.height / rect.height);
+
+  let dx = canvasX - fit.anchorX;
+  let dy = canvasY - fit.anchorY;
+
+  if (fit.rotationDeg !== 0) {
+    const rad = (-fit.rotationDeg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const rx = dx * cos - dy * sin;
+    const ry = dx * sin + dy * cos;
+    dx = rx;
+    dy = ry;
+  }
+
+  const sourceX = (dx - fit.offsetX) / fit.scale;
+  const sourceY = (dy - fit.offsetY) / fit.scale;
+
   return { x: sourceX, y: sourceY };
 }

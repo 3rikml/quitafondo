@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@imgly/background-removal": "^1.7.0",
+    "@huggingface/transformers": "4.3.0",
     "@tensorflow/tfjs": "^4.11.0",
     "@upscalerjs/esrgan-medium": "^1.0.0",
     "class-variance-authority": "^0.7.1",

@@ -1,10 +1,10 @@
 # QuitaFondo
 
-QuitaFondo es un editor de imágenes en el navegador para quitar el fondo de fotos, reencuadrarlas y exportarlas en lote. Todo el procesamiento ocurre **100% en el cliente** (WebAssembly + TensorFlow.js): no hay backend, no se suben imágenes a ningún servidor, y no se requiere ninguna API key.
+QuitaFondo es un editor de imágenes en el navegador para quitar el fondo de fotos, reencuadrarlas y exportarlas en lote. Todo el procesamiento ocurre **100% en el cliente** (WebGPU/WebAssembly): no hay backend, no se suben imágenes a ningún servidor, y no se requiere ninguna API key.
 
 ## Funcionalidades
 
-- **Quitar fondo automáticamente**, usando [`@imgly/background-removal`](https://github.com/imgly/background-removal-js) directamente en el navegador.
+- **Quitar fondo automáticamente** con IA directamente en el navegador, en un Web Worker para que la interfaz nunca se congele. Usa WebGPU cuando está disponible y WebAssembly si no.
 - **Reencuadrar y centrar el sujeto**, con presets (cuadrado, retrato 4:5, historia 9:16) o un tamaño personalizado.
 - **Recorte (crop)** manual arrastrando un rectángulo sobre la imagen.
 - **Mover, redimensionar y rotar** el sujeto directamente sobre el lienzo, incluyendo un control para enderezar fotos torcidas o girarlas en incrementos de 90°.
@@ -18,7 +18,8 @@ QuitaFondo es un editor de imágenes en el navegador para quitar el fondo de fot
 ## Stack técnico
 
 - [Next.js](https://nextjs.org) (App Router) + React + TypeScript
-- [@imgly/background-removal](https://github.com/imgly/background-removal-js) y [TensorFlow.js](https://www.tensorflow.org/js) para la segmentación, corriendo vía WASM en el navegador
+- [Transformers.js](https://github.com/huggingface/transformers.js) (ONNX Runtime Web) para la segmentación, con WebGPU o WASM
+- [TensorFlow.js](https://www.tensorflow.org/js) para el escalado de imagen
 - [UpscalerJS](https://github.com/upscalerjs/upscaler) (ESRGAN) para el escalado de imagen
 - Tailwind CSS para los estilos
 - Vitest para las pruebas
@@ -42,6 +43,15 @@ npm run start   # sirve el build de producción
 npm run lint    # ESLint
 npm run test    # corre las pruebas (Vitest)
 ```
+
+## Modelos de IA
+
+Los modelos se descargan una sola vez desde Hugging Face y quedan guardados en la caché del navegador. Tus imágenes nunca salen de tu equipo.
+
+| Modelo | Licencia | Cuándo se usa |
+| --- | --- | --- |
+| [BiRefNet_lite](https://huggingface.co/onnx-community/BiRefNet_lite-ONNX) | MIT | GPUs con WebGPU que soportan el modelo (mejor calidad) |
+| [IS-Net general-use](https://huggingface.co/imgly/isnet-general-onnx) | MIT (pesos originales Apache-2.0) | Apple Silicon y equipos sin WebGPU |
 
 ## Licencia
 

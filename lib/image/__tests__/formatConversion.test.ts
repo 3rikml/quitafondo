@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { isNativelySupportedByLibrary } from "../formatConversion";
 
 describe("isNativelySupportedByLibrary", () => {
-  it("accepts the exact formats @imgly/background-removal can decode", () => {
+  it("accepts the formats passed to the segmentation worker as-is", () => {
     expect(isNativelySupportedByLibrary("image/png")).toBe(true);
     expect(isNativelySupportedByLibrary("image/jpeg")).toBe(true);
     expect(isNativelySupportedByLibrary("image/jpg")).toBe(true);

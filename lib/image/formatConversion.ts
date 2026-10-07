@@ -1,9 +1,9 @@
 /**
- * `@imgly/background-removal`'s own decoder only understands these types —
- * anything else throws a raw "Invalid format: ..." error deep inside the
- * library, even though our own upload validation (`fileValidation.ts`)
- * intentionally allows a wider set (gif/bmp/avif) since the browser itself
- * can decode them. This is the single source of truth for that narrower set.
+ * Formats every browser decodes reliably, including inside the segmentation
+ * Web Worker. Our upload validation (`fileValidation.ts`) intentionally allows
+ * a wider set (gif/bmp/avif); those are normalized to PNG up front so an
+ * exotic format fails here with a readable message instead of deep inside the
+ * model pipeline. This is the single source of truth for that narrower set.
  */
 const LIBRARY_SUPPORTED_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
 
