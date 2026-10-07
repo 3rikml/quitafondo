@@ -4,7 +4,17 @@ export type BackgroundConfig =
   | { kind: "transparent" }
   | { kind: "solid"; color: string }
   | { kind: "gradient"; from: string; to: string; angleDeg: number }
-  | { kind: "image"; url: string };
+  | { kind: "image"; url: string }
+  /** The original photo itself, blurred (0-100), behind the subject — a "portrait mode" look. */
+  | { kind: "blur"; amount: number };
+
+export type ShadowKind = "none" | "soft" | "contact";
+
+export interface ShadowConfig {
+  /** "soft": blurred silhouette drop shadow; "contact": ellipse where the subject meets the floor. */
+  kind: ShadowKind;
+  intensity: number; // 0-100
+}
 
 export type CanvasPreset = "square" | "portrait-4-5" | "story-9-16" | "original" | "custom";
 
@@ -39,6 +49,8 @@ export interface CanvasConfig {
    * (older saved jobs predate this field) means "auto-detect as before".
    */
   cropBox?: BoundingBox | null;
+  /** Drawn beneath the subject, inside the same fit (so it rotates/scales with it). */
+  shadow: ShadowConfig;
 }
 
 export type ExportFormat = "png" | "jpg" | "webp";
@@ -77,6 +89,7 @@ export const DEFAULT_CANVAS: CanvasConfig = {
   manualScale: 1,
   rotationDeg: 0,
   cropBox: null,
+  shadow: { kind: "none", intensity: 50 },
 };
 
 export const DEFAULT_EXPORT: ExportConfig = { format: "png", quality: 92 };

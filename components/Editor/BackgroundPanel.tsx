@@ -1,11 +1,41 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Ban, Blend, CopyCheck, ImageIcon, PaintBucket } from "lucide-react";
+import { useRef, useState, type CSSProperties } from "react";
+import { Aperture, Ban, Blend, CopyCheck, ImageIcon, PaintBucket } from "lucide-react";
 import type { BackgroundConfig } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
+
+/** One-click starting points; every one stays fully editable in its tab below. */
+const PRESETS: { label: string; config: BackgroundConfig }[] = [
+  { label: "Blanco", config: { kind: "solid", color: "#ffffff" } },
+  { label: "Gris claro", config: { kind: "solid", color: "#eceae6" } },
+  { label: "Negro", config: { kind: "solid", color: "#111111" } },
+  { label: "Arena", config: { kind: "solid", color: "#e9dcc7" } },
+  { label: "Rosa pastel", config: { kind: "solid", color: "#f6d6dc" } },
+  { label: "Azul cielo", config: { kind: "solid", color: "#cfe3f5" } },
+  { label: "Menta", config: { kind: "solid", color: "#d3eedf" } },
+  { label: "Atardecer", config: { kind: "gradient", from: "#ffb88c", to: "#de6262", angleDeg: 135 } },
+  { label: "Océano", config: { kind: "gradient", from: "#a1c4fd", to: "#2b5876", angleDeg: 160 } },
+  { label: "Durazno", config: { kind: "gradient", from: "#fff1eb", to: "#f5c6a5", angleDeg: 90 } },
+  { label: "Lavanda", config: { kind: "gradient", from: "#e0c3fc", to: "#8ec5fc", angleDeg: 135 } },
+  { label: "Estudio", config: { kind: "gradient", from: "#fafafa", to: "#cfcfcf", angleDeg: 90 } },
+];
+
+function swatchStyle(config: BackgroundConfig): CSSProperties {
+  if (config.kind === "solid") return { background: config.color };
+  if (config.kind === "gradient") {
+    // Canvas angles start at "pointing right"; CSS ones at "pointing up".
+    return { background: `linear-gradient(${config.angleDeg + 90}deg, ${config.from}, ${config.to})` };
+  }
+  return {};
+}
+
+function isSameBackground(a: BackgroundConfig, b: BackgroundConfig): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 
 interface BackgroundPanelProps {
   value: BackgroundConfig;
@@ -40,6 +70,24 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
         </Button>
       </div>
 
+      <div className="grid grid-cols-6 gap-1.5" role="group" aria-label="Fondos predefinidos">
+        {PRESETS.map(({ label, config }) => (
+          <button
+            key={label}
+            type="button"
+            title={label}
+            aria-label={label}
+            aria-pressed={isSameBackground(value, config)}
+            onClick={() => onChange(config)}
+            className={cn(
+              "aspect-square rounded-md border shadow-xs transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+              isSameBackground(value, config) && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+            )}
+            style={swatchStyle(config)}
+          />
+        ))}
+      </div>
+
       <Tabs
         value={activeTab}
         onValueChange={(kind) => {
@@ -47,7 +95,7 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
           handleTabChange(kind as BackgroundConfig["kind"]);
         }}
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="transparent" title="Sin fondo" aria-label="Sin fondo">
             <Ban />
           </TabsTrigger>
@@ -59,6 +107,9 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
           </TabsTrigger>
           <TabsTrigger value="image" title="Imagen" aria-label="Imagen">
             <ImageIcon />
+          </TabsTrigger>
+          <TabsTrigger value="blur" title="Foto original desenfocada" aria-label="Foto original desenfocada">
+            <Aperture />
           </TabsTrigger>
         </TabsList>
 
@@ -117,6 +168,22 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
           />
         </TabsContent>
 
+        <TabsContent value="blur" className="flex flex-col gap-1 pt-2">
+          <span className="text-xs text-muted-foreground">
+            Desenfoque ({value.kind === "blur" ? value.amount : 50}%) — efecto retrato con tu propia foto
+          </span>
+          <Slider
+            min={0}
+            max={100}
+            step={1}
+            value={[value.kind === "blur" ? value.amount : 50]}
+            onValueChange={(values) => {
+              const amount = Array.isArray(values) ? values[0] : values;
+              onChange({ kind: "blur", amount });
+            }}
+          />
+        </TabsContent>
+
         <TabsContent value="image" className="pt-2">
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
             Elegir imagen…
@@ -142,6 +209,7 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
     if (kind === "gradient" && value.kind !== "gradient") {
       onChange({ kind: "gradient", from: "#ffffff", to: "#000000", angleDeg: 90 });
     }
+    if (kind === "blur" && value.kind !== "blur") onChange({ kind: "blur", amount: 50 });
     // "image" commits nothing: there is no URL until the user picks a file, so
     // the previous background stays applied while its file picker is on screen.
     // Only `activeTab` moves (see the Tabs `onValueChange` above).

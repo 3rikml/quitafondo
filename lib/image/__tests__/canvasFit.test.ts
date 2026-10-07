@@ -71,6 +71,7 @@ describe("resolveCanvasLayout", () => {
     manualScale: 1,
     rotationDeg: 0,
     cropBox: null,
+    shadow: { kind: "none", intensity: 50 },
   };
 
   it("uses the source size and an identity transform for the original preset", () => {

@@ -3,7 +3,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import type { BackgroundConfig, CanvasConfig } from "@/lib/types";
 import { computeAlphaBoundingBox, type BoundingBox } from "@/lib/image/boundingBox";
-import { getCropClipRect, resolveCanvasLayout, type FitResult } from "@/lib/image/canvasFit";
+import { resolveCanvasLayout, type FitResult } from "@/lib/image/canvasFit";
+import { drawSubject } from "@/lib/image/drawSubject";
 import { paintBackground } from "@/lib/image/drawBackground";
 import { createOverrideBuffer } from "@/lib/image/alphaCompose";
 import { composeCutoutWithRetouch } from "@/lib/image/composeCutout";
@@ -192,60 +193,38 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
       background,
       background.kind === "image"
         ? resolveCachedImage(background.url, imageCacheRef.current, () => render())
-        : null
+        : background.kind === "blur"
+          ? getOriginalCanvas()
+          : null,
+      fit
     );
 
     const composedBuffer = getComposedBuffer(sourcePixels);
-    const composedBitmapSource = pixelBufferToCanvas(composedBuffer);
-
-    ctx.save();
-    if (fit.rotationDeg !== 0) {
-      ctx.translate(fit.anchorX, fit.anchorY);
-      ctx.rotate((fit.rotationDeg * Math.PI) / 180);
-      ctx.translate(-fit.anchorX, -fit.anchorY);
-    }
-    if (canvasConfig.cropBox) {
-      const clip = getCropClipRect(fit, canvasConfig.cropBox);
-      ctx.beginPath();
-      ctx.rect(clip.x, clip.y, clip.width, clip.height);
-      ctx.clip();
-    }
-    ctx.translate(fit.offsetX, fit.offsetY);
-    ctx.scale(fit.scale, fit.scale);
-    ctx.drawImage(composedBitmapSource, 0, 0);
-    ctx.restore();
+    drawSubject(ctx, pixelBufferToCanvas(composedBuffer), fit, canvasConfig, subjectBoxRef.current);
 
     renderComparison(width, height, fit);
     onRender?.();
   }
 
+  /** The decoded original photo as a drawable canvas, or null until it has loaded. */
+  function getOriginalCanvas(): HTMLCanvasElement | null {
+    const originalPixels = originalPixelsRef.current;
+    if (!originalPixels) return null;
+    originalCanvasRef.current ??= pixelBufferToCanvas(originalPixels);
+    return originalCanvasRef.current;
+  }
+
   /** Draws the untouched original photo, with the same fit as the cutout, onto the overlay canvas. */
   function renderComparison(width: number, height: number, fit: CanvasFit) {
     const overlay = compareCanvasRef.current;
-    const originalPixels = originalPixelsRef.current;
-    if (!overlay || compareSplit === null || !originalPixels) return;
-    originalCanvasRef.current ??= pixelBufferToCanvas(originalPixels);
+    const original = getOriginalCanvas();
+    if (!overlay || compareSplit === null || !original) return;
 
     overlay.width = width;
     overlay.height = height;
     const ctx = overlay.getContext("2d")!;
     ctx.clearRect(0, 0, width, height);
-    ctx.save();
-    if (fit.rotationDeg !== 0) {
-      ctx.translate(fit.anchorX, fit.anchorY);
-      ctx.rotate((fit.rotationDeg * Math.PI) / 180);
-      ctx.translate(-fit.anchorX, -fit.anchorY);
-    }
-    if (canvasConfig.cropBox) {
-      const clip = getCropClipRect(fit, canvasConfig.cropBox);
-      ctx.beginPath();
-      ctx.rect(clip.x, clip.y, clip.width, clip.height);
-      ctx.clip();
-    }
-    ctx.translate(fit.offsetX, fit.offsetY);
-    ctx.scale(fit.scale, fit.scale);
-    ctx.drawImage(originalCanvasRef.current, 0, 0);
-    ctx.restore();
+    drawSubject(ctx, original, fit, canvasConfig, subjectBoxRef.current, { withShadow: false });
   }
 
   /**

@@ -1,8 +1,9 @@
 import type { BackgroundConfig, CanvasConfig, ExportConfig } from "../types";
 import { computeAlphaBoundingBox } from "./boundingBox";
-import { getCropClipRect, resolveCanvasLayout } from "./canvasFit";
+import { resolveCanvasLayout } from "./canvasFit";
 import { composeCutoutWithRetouch } from "./composeCutout";
 import { paintBackground } from "./drawBackground";
+import { drawSubject } from "./drawSubject";
 import { MIME_BY_FORMAT, flattenOnWhite, requiresFlattening } from "./exportFormat";
 import type { PixelBuffer } from "./pixelBuffer";
 
@@ -30,8 +31,10 @@ export async function renderJobToBlob(
 
   try {
     const sourcePixels = readBitmapPixels(bitmap);
-    const originalPixels =
-      retouchOverride && originalUrl ? await loadOriginalPixels(originalUrl) : null;
+    // The original is needed for "Restaurar" color repair and as the source
+    // of a blurred-photo background; skip the decode when neither applies.
+    const needsOriginal = Boolean(retouchOverride) || background.kind === "blur";
+    const originalPixels = needsOriginal && originalUrl ? await loadOriginalPixels(originalUrl) : null;
     const composedPixels = composeCutoutWithRetouch(
       sourcePixels,
       originalPixels,
@@ -57,25 +60,13 @@ export async function renderJobToBlob(
     ctx.clearRect(0, 0, width, height);
 
     const backgroundImage =
-      background.kind === "image" ? await loadBackgroundBitmap(background.url) : null;
-    paintBackground(ctx, width, height, background, backgroundImage);
-
-    ctx.save();
-    if (fit.rotationDeg !== 0) {
-      ctx.translate(fit.anchorX, fit.anchorY);
-      ctx.rotate((fit.rotationDeg * Math.PI) / 180);
-      ctx.translate(-fit.anchorX, -fit.anchorY);
-    }
-    if (canvasConfig.cropBox) {
-      const clip = getCropClipRect(fit, canvasConfig.cropBox);
-      ctx.beginPath();
-      ctx.rect(clip.x, clip.y, clip.width, clip.height);
-      ctx.clip();
-    }
-    ctx.translate(fit.offsetX, fit.offsetY);
-    ctx.scale(fit.scale, fit.scale);
-    ctx.drawImage(composedSource, 0, 0);
-    ctx.restore();
+      background.kind === "image"
+        ? await loadBackgroundBitmap(background.url)
+        : background.kind === "blur" && originalPixels
+          ? pixelBufferToCanvas(originalPixels)
+          : null;
+    paintBackground(ctx, width, height, background, backgroundImage, fit);
+    drawSubject(ctx, composedSource, fit, canvasConfig, subjectBox);
 
     if (requiresFlattening(exportConfig.format)) {
       const rendered = ctx.getImageData(0, 0, width, height);

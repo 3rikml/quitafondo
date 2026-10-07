@@ -33,6 +33,7 @@ import { BatchQueue } from "@/components/BatchQueue";
 import { EditorCanvas, type EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
 import { BackgroundPanel } from "@/components/Editor/BackgroundPanel";
 import { CanvasSizePanel } from "@/components/Editor/CanvasSizePanel";
+import { ShadowPanel } from "@/components/Editor/ShadowPanel";
 import {
   RetouchToolbar,
   paintBrushStroke,
@@ -1135,12 +1136,17 @@ export default function Home() {
                 </div>
               </Card>
 
-              <Card size="sm" className="p-3">
+              <Card size="sm" className="gap-3 p-3">
                 <BackgroundPanel
                   key={selectedJob.id}
                   value={selectedJob.background}
                   onChange={handleBackgroundChange}
                   onApplyToAll={applyBackgroundToAll}
+                />
+                <Separator />
+                <ShadowPanel
+                  value={selectedJob.canvas.shadow}
+                  onChange={(shadow) => updateJob(selectedJob.id, { canvas: { ...selectedJob.canvas, shadow } })}
                 />
               </Card>
 
