@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CopyCheck, Download, TriangleAlert } from "lucide-react";
 import type { ExportConfig, ExportFormat } from "@/lib/types";
-import { MIME_BY_FORMAT, requiresFlattening, flattenOnWhite } from "@/lib/image/exportFormat";
+import { downloadRenderedImage } from "@/lib/image/downloadImage";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -31,30 +31,7 @@ export function ExportPanel({ value, onChange, onApplyToAll, getRenderedPixelBuf
 
     setIsExporting(true);
     try {
-      const finalPixels = requiresFlattening(value.format) ? flattenOnWhite(pixels) : pixels;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = finalPixels.width;
-      canvas.height = finalPixels.height;
-      const ctx = canvas.getContext("2d")!;
-      const imageData = new ImageData(
-        finalPixels.data as Uint8ClampedArray<ArrayBuffer>,
-        finalPixels.width,
-        finalPixels.height
-      );
-      ctx.putImageData(imageData, 0, 0);
-
-      const blob: Blob | null = await new Promise((resolve) =>
-        canvas.toBlob(resolve, MIME_BY_FORMAT[value.format], value.quality / 100)
-      );
-      if (!blob) return;
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${fileNameBase}.${value.format}`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await downloadRenderedImage(pixels, value, fileNameBase);
     } finally {
       setIsExporting(false);
     }

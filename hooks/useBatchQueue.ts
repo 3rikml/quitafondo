@@ -141,8 +141,9 @@ export function useBatchQueue() {
   // eslint-disable-next-line react-hooks/refs -- intentional latest-ref pattern, not used during render
   pumpRef.current = pump;
 
+  /** Queues the files and returns the new jobs' ids, in the same order. */
   const addFiles = useCallback(
-    (files: File[]) => {
+    (files: File[]): string[] => {
       const queueableIds: string[] = [];
 
       const newJobs: ImageJob[] = files.map((file) => {
@@ -171,6 +172,7 @@ export function useBatchQueue() {
       setJobs((prev) => [...prev, ...newJobs]);
       pendingIds.current.push(...queueableIds);
       pump();
+      return newJobs.map((job) => job.id);
     },
     [pump]
   );

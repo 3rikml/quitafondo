@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Columns2,
+  Download,
   ImagePlus,
+  LoaderCircle,
   Redo2,
   Replace,
   RotateCcw,
@@ -11,6 +14,7 @@ import {
   Sparkles,
   TriangleAlert,
   Undo2,
+  UploadCloud,
   X,
   ZoomIn,
   ZoomOut,
@@ -22,6 +26,8 @@ import { clampCropBox, type BoundingBox } from "@/lib/image/boundingBox";
 import type { BackgroundConfig, CanvasConfig } from "@/lib/types";
 import { loadSelectedJobId, saveSelectedJobId } from "@/lib/storage/db";
 import { useBatchQueue } from "@/hooks/useBatchQueue";
+import { useGlobalImageInput } from "@/hooks/useGlobalImageInput";
+import { downloadRenderedImage } from "@/lib/image/downloadImage";
 import { ImageDropzone } from "@/components/ImageDropzone";
 import { BatchQueue } from "@/components/BatchQueue";
 import { EditorCanvas, type EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
@@ -111,6 +117,10 @@ export default function Home() {
   const [retouchTolerance, setRetouchTolerance] = useState(30);
   const [retouchVersion, setRetouchVersion] = useState(0);
   const [zoom, setZoom] = useState(1);
+  // Before/after comparison: null while off, otherwise the 0-1 position of
+  // the divider (original photo to its left, result to its right).
+  const [compareSplit, setCompareSplit] = useState<number | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   // Below the `lg` breakpoint the image list and the edit panel become
   // slide-over drawers instead of permanent side columns (there's no room
   // for three columns on a phone) — these track whether each is open. They
@@ -253,6 +263,7 @@ export default function Home() {
     setLastSelectedJobId(selectedJobId);
     setCropMode(false);
     setCropDraft(null);
+    setCompareSplit(null);
   }
 
   // Positions the resize handles on the subject's actual on-screen corners.
@@ -299,12 +310,30 @@ export default function Home() {
     setCropHandleRect(boxToPercentRect(cropDraft, fit, canvas.width, canvas.height));
   }, [cropMode, cropDraft, canvasRenderTick]);
 
+  // Jump straight to the first new image, so the user watches it being
+  // processed instead of having to find and click it in the list.
   const handleFilesSelected = useCallback(
     (files: File[]) => {
-      addFiles(files);
+      const [firstId] = addFiles(files);
+      if (firstId) {
+        setSelectedJobId(firstId);
+        setMobileLeftOpen(false);
+      }
     },
     [addFiles]
   );
+  const isDraggingFiles = useGlobalImageInput(handleFilesSelected);
+
+  const handleQuickDownload = useCallback(async () => {
+    const pixels = canvasHandleRef.current?.getRenderedPixelBuffer();
+    if (!pixels || !selectedJob) return;
+    setIsDownloading(true);
+    try {
+      await downloadRenderedImage(pixels, selectedJob.exportConfig, selectedJob.fileName.replace(/\.[^.]+$/, ""));
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [selectedJob]);
 
   function getHistory(jobId: string) {
     let history = historyByJobIdRef.current.get(jobId);
@@ -832,34 +861,52 @@ export default function Home() {
         <section className="relative flex flex-1 items-center justify-center overflow-auto bg-muted/30 p-4 lg:p-8">
           {selectedJob?.status === "done" && selectedJob.cutoutBlob ? (
             <>
-              <div className="absolute top-4 right-4 z-10 flex items-center gap-0.5 rounded-lg border bg-background/95 p-1 shadow-sm">
-                <IconButton
-                  label="Alejar"
-                  className="size-7"
-                  disabled={zoom <= ZOOM_MIN}
-                  onClick={() => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100))}
-                >
-                  <ZoomOut />
-                </IconButton>
-                <span className="w-11 text-center text-xs tabular-nums text-muted-foreground">
-                  {Math.round(zoom * 100)}%
-                </span>
-                <IconButton
-                  label="Acercar"
-                  className="size-7"
-                  disabled={zoom >= ZOOM_MAX}
-                  onClick={() => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100))}
-                >
-                  <ZoomIn />
-                </IconButton>
-                <IconButton
-                  label="Restablecer zoom (100%)"
-                  className="size-7"
-                  disabled={zoom === 1}
-                  onClick={() => setZoom(1)}
-                >
-                  <RotateCcw />
-                </IconButton>
+              <div className="pointer-events-none absolute inset-x-4 top-4 z-10 flex flex-wrap items-start justify-between gap-2 [&>*]:pointer-events-auto">
+                <div className="flex items-center gap-1.5">
+                  <Button size="sm" onClick={handleQuickDownload} disabled={isDownloading}>
+                    <Download />
+                    {isDownloading ? "Descargando…" : `Descargar ${selectedJob.exportConfig.format.toUpperCase()}`}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={compareSplit === null ? "outline" : "secondary"}
+                    aria-pressed={compareSplit !== null}
+                    onClick={() => setCompareSplit((split) => (split === null ? 0.5 : null))}
+                    disabled={!selectedJob.originalUrl}
+                  >
+                    <Columns2 />
+                    Comparar
+                  </Button>
+                </div>
+                <div className="flex items-center gap-0.5 rounded-lg border bg-background/95 p-1 shadow-sm">
+                  <IconButton
+                    label="Alejar"
+                    className="size-7"
+                    disabled={zoom <= ZOOM_MIN}
+                    onClick={() => setZoom((z) => Math.max(ZOOM_MIN, Math.round((z - ZOOM_STEP) * 100) / 100))}
+                  >
+                    <ZoomOut />
+                  </IconButton>
+                  <span className="w-11 text-center text-xs tabular-nums text-muted-foreground">
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <IconButton
+                    label="Acercar"
+                    className="size-7"
+                    disabled={zoom >= ZOOM_MAX}
+                    onClick={() => setZoom((z) => Math.min(ZOOM_MAX, Math.round((z + ZOOM_STEP) * 100) / 100))}
+                  >
+                    <ZoomIn />
+                  </IconButton>
+                  <IconButton
+                    label="Restablecer zoom (100%)"
+                    className="size-7"
+                    disabled={zoom === 1}
+                    onClick={() => setZoom(1)}
+                  >
+                    <RotateCcw />
+                  </IconButton>
+                </div>
               </div>
               <div
                 onPointerDown={handlePointerDown}
@@ -881,8 +928,41 @@ export default function Home() {
                     getOverrideBuffer={getOverrideBuffer}
                     retouchVersion={retouchVersion}
                     onRender={() => setCanvasRenderTick((t) => t + 1)}
+                    compareSplit={compareSplit}
                   />
-                  {!retouchActive && !cropMode && handleRect && (
+                  {compareSplit !== null && (
+                    <div
+                      className="absolute inset-0"
+                      // Keep the canvas's own drag-to-move / retouch handlers out of it.
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <div
+                        className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.25)]"
+                        style={{ left: `${compareSplit * 100}%` }}
+                      >
+                        <span className="absolute top-1/2 left-1/2 flex size-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-neutral-700 shadow">
+                          <Columns2 className="size-3.5" />
+                        </span>
+                      </div>
+                      <span className="pointer-events-none absolute top-2 left-2 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white">
+                        Original
+                      </span>
+                      <span className="pointer-events-none absolute top-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white">
+                        Resultado
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={compareSplit * 100}
+                        onChange={(e) => setCompareSplit(Number(e.target.value) / 100)}
+                        aria-label="Comparar original y resultado"
+                        className="absolute inset-0 h-full w-full cursor-ew-resize opacity-0"
+                      />
+                    </div>
+                  )}
+                  {!retouchActive && !cropMode && compareSplit === null && handleRect && (
                     <div
                       className="absolute inset-0"
                       style={
@@ -939,15 +1019,57 @@ export default function Home() {
                 </div>
               </div>
             </>
+          ) : selectedJob && selectedJob.status !== "done" && selectedJob.originalUrl ? (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+              <div className="relative max-h-[70%] overflow-hidden rounded-lg shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local blob: URL, nothing for next/image to optimize */}
+                <img
+                  src={selectedJob.originalUrl}
+                  alt={selectedJob.fileName}
+                  className={cn(
+                    "block max-h-[60vh] max-w-full object-contain",
+                    selectedJob.status !== "error" && "opacity-60 saturate-50"
+                  )}
+                />
+                {selectedJob.status !== "error" && (
+                  <div className="qf-scan pointer-events-none absolute inset-x-0 h-1/3" aria-hidden="true" />
+                )}
+              </div>
+              {selectedJob.status === "error" ? (
+                <div className="flex max-w-sm flex-col items-center gap-2 text-center">
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-destructive">
+                    <TriangleAlert className="size-4" strokeWidth={2} />
+                    No se pudo quitar el fondo
+                  </p>
+                  <p className="text-xs text-muted-foreground">{selectedJob.errorMessage}</p>
+                  <Button size="sm" variant="outline" onClick={() => retryJob(selectedJob.id)}>
+                    <RotateCcw />
+                    Reintentar
+                  </Button>
+                </div>
+              ) : (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+                  <LoaderCircle className="size-4 animate-spin" />
+                  {selectedJob.status === "pending"
+                    ? "En espera…"
+                    : selectedJob.progress != null && selectedJob.progress < 0.9
+                      ? `Descargando el modelo de IA (solo la primera vez)… ${Math.round((selectedJob.progress / 0.9) * 100)}%`
+                      : "Quitando el fondo…"}
+                </p>
+              )}
+            </div>
           ) : (
             <div className="flex max-w-xs flex-col items-center gap-3 text-center">
               <span className="flex size-11 items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border">
                 <ImagePlus className="size-5" strokeWidth={1.75} />
               </span>
               <div className="flex flex-col gap-1">
-                <p className="text-sm font-medium">Ninguna imagen seleccionada</p>
+                <p className="text-sm font-medium">Sube una imagen para empezar</p>
                 <p className="text-sm text-muted-foreground">
-                  Sube una imagen desde el panel izquierdo y espera a que termine de procesarse para empezar a editarla.
+                  Arrástrala a cualquier parte de la ventana, pégala con{" "}
+                  <kbd className="rounded border bg-background px-1 font-mono text-xs">Ctrl</kbd>+
+                  <kbd className="rounded border bg-background px-1 font-mono text-xs">V</kbd> o elígela desde el panel
+                  izquierdo.
                 </p>
               </div>
             </div>
@@ -1093,6 +1215,14 @@ export default function Home() {
           )}
         </aside>
       </div>
+      {isDraggingFiles && (
+        <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-primary/10 p-6 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-primary bg-background/95 px-10 py-8 text-center shadow-lg">
+            <UploadCloud className="size-8 text-primary" strokeWidth={1.75} />
+            <p className="text-base font-medium">Suelta tus imágenes para quitarles el fondo</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

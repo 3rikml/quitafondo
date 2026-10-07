@@ -67,13 +67,22 @@ interface EditorCanvasProps {
    * this component's own internal decode has resolved.
    */
   onRender?: () => void;
+  /**
+   * Before/after comparison: when set (0-1), the original photo is drawn on a
+   * separate overlay canvas, with the same fit, and revealed left of this
+   * horizontal fraction. The main canvas is left untouched so exporting while
+   * comparing never bakes the original into the downloaded image.
+   */
+  compareSplit?: number | null;
 }
 
 export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { cutoutBlob, originalUrl, background, canvasConfig, getOverrideBuffer, retouchVersion, onRender },
+  { cutoutBlob, originalUrl, background, canvasConfig, getOverrideBuffer, retouchVersion, onRender, compareSplit = null },
   ref
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const compareCanvasRef = useRef<HTMLCanvasElement>(null);
+  const originalCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const bitmapRef = useRef<ImageBitmap | null>(null);
   const sourcePixelsRef = useRef<PixelBuffer | null>(null);
   const originalPixelsRef = useRef<PixelBuffer | null>(null);
@@ -121,6 +130,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
   useEffect(() => {
     let cancelled = false;
     originalPixelsRef.current = null;
+    originalCanvasRef.current = null;
     warnedDimensionMismatchRef.current = false;
 
     if (!originalUrl) return;
@@ -154,7 +164,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
   useEffect(() => {
     render();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [background, canvasConfig, retouchVersion]);
+  }, [background, canvasConfig, retouchVersion, compareSplit !== null]);
 
   function render() {
     const canvas = canvasRef.current;
@@ -205,7 +215,37 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
     ctx.drawImage(composedBitmapSource, 0, 0);
     ctx.restore();
 
+    renderComparison(width, height, fit);
     onRender?.();
+  }
+
+  /** Draws the untouched original photo, with the same fit as the cutout, onto the overlay canvas. */
+  function renderComparison(width: number, height: number, fit: CanvasFit) {
+    const overlay = compareCanvasRef.current;
+    const originalPixels = originalPixelsRef.current;
+    if (!overlay || compareSplit === null || !originalPixels) return;
+    originalCanvasRef.current ??= pixelBufferToCanvas(originalPixels);
+
+    overlay.width = width;
+    overlay.height = height;
+    const ctx = overlay.getContext("2d")!;
+    ctx.clearRect(0, 0, width, height);
+    ctx.save();
+    if (fit.rotationDeg !== 0) {
+      ctx.translate(fit.anchorX, fit.anchorY);
+      ctx.rotate((fit.rotationDeg * Math.PI) / 180);
+      ctx.translate(-fit.anchorX, -fit.anchorY);
+    }
+    if (canvasConfig.cropBox) {
+      const clip = getCropClipRect(fit, canvasConfig.cropBox);
+      ctx.beginPath();
+      ctx.rect(clip.x, clip.y, clip.width, clip.height);
+      ctx.clip();
+    }
+    ctx.translate(fit.offsetX, fit.offsetY);
+    ctx.scale(fit.scale, fit.scale);
+    ctx.drawImage(originalCanvasRef.current, 0, 0);
+    ctx.restore();
   }
 
   /**
@@ -257,20 +297,30 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
   }));
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="max-h-full max-w-full rounded-lg shadow-sm"
-      style={{
-        // Neutral mid-gray checker so transparency reads correctly in both the
-        // light and the dark theme (a light-gray/white checker looked washed
-        // out and wrong on a dark background).
-        backgroundImage:
-          "linear-gradient(45deg, var(--checker-dark) 25%, transparent 25%), linear-gradient(-45deg, var(--checker-dark) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--checker-dark) 75%), linear-gradient(-45deg, transparent 75%, var(--checker-dark) 75%)",
-        backgroundColor: "var(--checker-light)",
-        backgroundSize: "16px 16px",
-        backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
-      }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="max-h-full max-w-full rounded-lg shadow-sm"
+        style={{
+          // Neutral mid-gray checker so transparency reads correctly in both the
+          // light and the dark theme (a light-gray/white checker looked washed
+          // out and wrong on a dark background).
+          backgroundImage:
+            "linear-gradient(45deg, var(--checker-dark) 25%, transparent 25%), linear-gradient(-45deg, var(--checker-dark) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--checker-dark) 75%), linear-gradient(-45deg, transparent 75%, var(--checker-dark) 75%)",
+          backgroundColor: "var(--checker-light)",
+          backgroundSize: "16px 16px",
+          backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
+        }}
+      />
+      {compareSplit !== null && (
+        <canvas
+          ref={compareCanvasRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full rounded-lg"
+          style={{ clipPath: `inset(0 ${(1 - compareSplit) * 100}% 0 0)` }}
+        />
+      )}
+    </>
   );
 });
 

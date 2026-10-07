@@ -138,3 +138,30 @@
     @apply font-heading;
   }
 }
+/* Light band sweeping over the photo while its background is being removed. */
+.qf-scan {
+  top: -33%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in oklch, var(--primary) 35%, transparent),
+    transparent
+  );
+  animation: qf-scan 1.6s ease-in-out infinite;
+}
+
+@keyframes qf-scan {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(400%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qf-scan {
+    animation: none;
+    top: 33%;
+  }
+}
