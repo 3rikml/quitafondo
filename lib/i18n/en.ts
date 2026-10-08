@@ -6,14 +6,7 @@ export const en: Record<MessageKey, string> = {
   "common.reset": "Reset",
   "common.apply": "Apply",
   "common.cancel": "Cancel",
-  "common.close": "Close",
 
-  "header.tagline": "Remove image backgrounds, 100% local and private.",
-  "header.openImages": "Show images",
-  "header.openControls": "Show editing controls",
-  "header.themeLight": "Switch to light mode",
-  "header.themeDark": "Switch to dark mode",
-  "header.language": "Cambiar a español",
   "header.unsupported":
     "Your browser is not supported: QuitaFondo needs WebAssembly to remove backgrounds. Try a recent version of Chrome, Edge, Firefox or Safari.",
 
@@ -30,7 +23,6 @@ export const en: Record<MessageKey, string> = {
   "topbar.themeDark": "Dark",
   "topbar.themeLight": "Light",
   "topbar.language": "Language",
-  "topbar.shortcuts": "Show keyboard shortcuts",
 
   "download.menu": "Download options",
   "download.format": "Format",
@@ -60,20 +52,11 @@ export const en: Record<MessageKey, string> = {
 
   "toast.eraseDone": "Object erased",
 
-  "panel.images": "Images",
   "panel.edit": "Edit",
 
-  "dropzone.title": "Drop your images here",
-  "dropzone.subtitle": "or click to choose them (you can pick several)",
   "dropzone.dropHint": "Drop your images to remove their background",
 
-  "queue.title": "Images ({count})",
-  "queue.downloadAll": "Download all",
   "queue.zipping": "Packing…",
-  "queue.status.pending": "Waiting",
-  "queue.status.processing": "Processing…",
-  "queue.status.done": "Done",
-  "queue.status.error": "Error",
   "queue.retry": "Retry",
   "queue.remove": "Remove {name} from the list",
   "queue.zipNoneProcessed": "Could not create the ZIP: no image could be processed.",
@@ -81,26 +64,18 @@ export const en: Record<MessageKey, string> = {
   "queue.zipFailed": "Could not create the ZIP. Please try again.",
   "queue.downscaled": "Reduced to {width}×{height} px to process it in the browser",
 
-  "canvas.emptyTitle": "Upload an image to get started",
-  "canvas.emptyHintBefore": "Drop it anywhere in the window, paste it with",
-  "canvas.emptyHintAfter": "or pick it from the left panel.",
   "canvas.waiting": "Waiting…",
   "canvas.downloadingModel": "Downloading the AI model (first time only)… {percent}%",
   "canvas.removing": "Removing the background…",
   "canvas.failed": "Could not remove the background",
-  "canvas.sidebarEmpty": "Background, size and export controls will appear here once you select a finished image.",
 
   "toolbar.download": "Download {format}",
   "toolbar.downloading": "Downloading…",
-  "toolbar.copy": "Copy",
-  "toolbar.copying": "Copying…",
-  "toolbar.copied": "Copied",
   "toolbar.copyFailed": "Could not copy",
   "toolbar.compare": "Compare",
   "toolbar.shortcuts": "Keyboard shortcuts",
   "toolbar.zoomOut": "Zoom out",
   "toolbar.zoomIn": "Zoom in",
-  "toolbar.zoomReset": "Reset zoom (100%)",
   "shortcut.tools": "Open a tool",
   "shortcut.download": "Download",
   "shortcut.copy": "Copy image",
@@ -195,13 +170,10 @@ export const en: Record<MessageKey, string> = {
   "size.rotateRight": "90° right",
   "size.angle": "Angle",
 
-  "history.title": "History",
   "history.undo": "Undo (Ctrl+Z)",
   "history.redo": "Redo (Ctrl+Shift+Z)",
 
   "retouch.title": "Manual retouch",
-  "retouch.activate": "Start retouching",
-  "retouch.deactivate": "Stop",
   "retouch.erase": "Erase",
   "retouch.restore": "Restore",
   "retouch.magic": "Magic",
@@ -231,11 +203,7 @@ export const en: Record<MessageKey, string> = {
   "eraser.working": "Erasing… (about 10 seconds)",
   "eraser.error": "Could not erase: {message}",
 
-  "export.title": "Export",
   "export.jpgWarning": "JPG has no transparency: transparent areas will be filled with white.",
-  "export.quality": "Quality ({value})",
-  "export.download": "Download image",
-  "export.exporting": "Exporting…",
 
   "error.unsupportedFormat": "Unsupported format. Use PNG, JPG, WebP, GIF, BMP or AVIF.",
   "error.tooBig": "The image exceeds the {mb} MB limit.",

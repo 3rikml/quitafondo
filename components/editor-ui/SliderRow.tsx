@@ -14,6 +14,9 @@ interface SliderRowProps {
   disabled?: boolean;
 }
 
+/** Ranges that cross zero (e.g. -100..100) are bipolar: they fill from 0, not from the left end. */
+const isBipolar = (min: number, max: number) => min < 0 && max > 0;
+
 /** A labeled slider with its current value aligned to the right. */
 export function SliderRow({ label, value, display, min, max, step = 1, onChange, disabled }: SliderRowProps) {
   return (
@@ -29,6 +32,7 @@ export function SliderRow({ label, value, display, min, max, step = 1, onChange,
         value={[value]}
         disabled={disabled}
         aria-label={label}
+        fillFrom={isBipolar(min, max) ? 0 : undefined}
         onValueChange={(values) => onChange(Array.isArray(values) ? values[0] : (values as number))}
       />
     </div>

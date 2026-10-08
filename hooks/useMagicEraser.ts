@@ -5,6 +5,7 @@ import type { ImageJob } from "@/lib/types";
 import { runInpaint } from "@/lib/ai/client";
 import { DOWNLOAD_PROGRESS_SHARE } from "@/lib/ai/protocol";
 import { t } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
 import { canvasToSourceCoords, paintBrushStroke } from "@/components/Editor/RetouchToolbar";
 import type { EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
 
@@ -98,6 +99,8 @@ export function useMagicEraser({ selectedJob, canvasHandleRef, replaceJobImages 
       mask.fill(0);
       replaceJobImages(job.id, result.original, result.cutout);
       setStatus({ kind: "idle" });
+      // Erasing takes ~10 s, so say clearly when it is done.
+      toast.add({ title: t("toast.eraseDone"), type: "success" });
     } catch (error) {
       setStatus({ kind: "error", message: error instanceof Error ? error.message : String(error) });
     }

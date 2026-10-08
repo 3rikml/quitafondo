@@ -4,14 +4,7 @@ export const es = {
   "common.reset": "Restablecer",
   "common.apply": "Aplicar",
   "common.cancel": "Cancelar",
-  "common.close": "Cerrar",
 
-  "header.tagline": "Quita fondos de tus imágenes, 100% local y privado.",
-  "header.openImages": "Ver imágenes",
-  "header.openControls": "Ver controles de edición",
-  "header.themeLight": "Cambiar a modo claro",
-  "header.themeDark": "Cambiar a modo oscuro",
-  "header.language": "Switch to English",
   "header.unsupported":
     "Tu navegador no es compatible: QuitaFondo necesita WebAssembly para quitar los fondos. Prueba con una versión reciente de Chrome, Edge, Firefox o Safari.",
 
@@ -28,7 +21,6 @@ export const es = {
   "topbar.themeDark": "Oscuro",
   "topbar.themeLight": "Claro",
   "topbar.language": "Idioma",
-  "topbar.shortcuts": "Ver atajos de teclado",
 
   "download.menu": "Opciones de descarga",
   "download.format": "Formato",
@@ -58,20 +50,11 @@ export const es = {
 
   "toast.eraseDone": "Objeto borrado",
 
-  "panel.images": "Imágenes",
   "panel.edit": "Editar",
 
-  "dropzone.title": "Arrastra tus imágenes aquí",
-  "dropzone.subtitle": "o haz clic para seleccionarlas (puedes elegir varias)",
   "dropzone.dropHint": "Suelta tus imágenes para quitarles el fondo",
 
-  "queue.title": "Imágenes ({count})",
-  "queue.downloadAll": "Descargar todo",
   "queue.zipping": "Empaquetando…",
-  "queue.status.pending": "En espera",
-  "queue.status.processing": "Procesando…",
-  "queue.status.done": "Listo",
-  "queue.status.error": "Error",
   "queue.retry": "Reintentar",
   "queue.remove": "Quitar {name} de la lista",
   "queue.zipNoneProcessed": "No se pudo generar el ZIP: ninguna imagen se pudo procesar.",
@@ -79,26 +62,18 @@ export const es = {
   "queue.zipFailed": "No se pudo generar el ZIP. Intenta de nuevo.",
   "queue.downscaled": "Reducida a {width}×{height} px para procesarla en el navegador",
 
-  "canvas.emptyTitle": "Sube una imagen para empezar",
-  "canvas.emptyHintBefore": "Arrástrala a cualquier parte de la ventana, pégala con",
-  "canvas.emptyHintAfter": "o elígela desde el panel izquierdo.",
   "canvas.waiting": "En espera…",
   "canvas.downloadingModel": "Descargando el modelo de IA (solo la primera vez)… {percent}%",
   "canvas.removing": "Quitando el fondo…",
   "canvas.failed": "No se pudo quitar el fondo",
-  "canvas.sidebarEmpty": "Los controles de fondo, tamaño y exportación aparecerán aquí cuando selecciones una imagen lista.",
 
   "toolbar.download": "Descargar {format}",
   "toolbar.downloading": "Descargando…",
-  "toolbar.copy": "Copiar",
-  "toolbar.copying": "Copiando…",
-  "toolbar.copied": "Copiada",
   "toolbar.copyFailed": "No se pudo copiar",
   "toolbar.compare": "Comparar",
   "toolbar.shortcuts": "Atajos de teclado",
   "toolbar.zoomOut": "Alejar",
   "toolbar.zoomIn": "Acercar",
-  "toolbar.zoomReset": "Restablecer zoom (100%)",
   "shortcut.tools": "Abrir herramienta",
   "shortcut.download": "Descargar",
   "shortcut.copy": "Copiar imagen",
@@ -195,13 +170,10 @@ export const es = {
   "size.rotateRight": "90° derecha",
   "size.angle": "Ángulo",
 
-  "history.title": "Historial",
   "history.undo": "Deshacer (Ctrl+Z)",
   "history.redo": "Rehacer (Ctrl+Shift+Z)",
 
   "retouch.title": "Retoque manual",
-  "retouch.activate": "Activar retoque",
-  "retouch.deactivate": "Desactivar",
   "retouch.erase": "Borrar",
   "retouch.restore": "Restaurar",
   "retouch.magic": "Mágica",
@@ -231,11 +203,7 @@ export const es = {
   "eraser.working": "Borrando… (unos 10 segundos)",
   "eraser.error": "No se pudo borrar: {message}",
 
-  "export.title": "Exportar",
   "export.jpgWarning": "JPG no soporta transparencia: el fondo se rellenará de blanco donde sea transparente.",
-  "export.quality": "Calidad ({value})",
-  "export.download": "Descargar imagen",
-  "export.exporting": "Exportando…",
 
   "error.unsupportedFormat": "Formato no compatible. Usa PNG, JPG, WebP, GIF, BMP o AVIF.",
   "error.tooBig": "La imagen supera el límite de {mb} MB.",
