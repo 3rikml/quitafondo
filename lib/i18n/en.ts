@@ -23,8 +23,6 @@ export const en: Record<MessageKey, string> = {
   "dropzone.title": "Drop your images here",
   "dropzone.subtitle": "or click to choose them (you can pick several)",
   "dropzone.dropHint": "Drop your images to remove their background",
-  "dropzone.samples": "No photo at hand? Try a sample:",
-  "dropzone.sample": "Sample: {name}",
 
   "queue.title": "Images ({count})",
   "queue.downloadAll": "Download all",

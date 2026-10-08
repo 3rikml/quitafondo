@@ -21,8 +21,6 @@ export const es = {
   "dropzone.title": "Arrastra tus imágenes aquí",
   "dropzone.subtitle": "o haz clic para seleccionarlas (puedes elegir varias)",
   "dropzone.dropHint": "Suelta tus imágenes para quitarles el fondo",
-  "dropzone.samples": "¿Sin foto a la mano? Prueba con un ejemplo:",
-  "dropzone.sample": "Ejemplo: {name}",
 
   "queue.title": "Imágenes ({count})",
   "queue.downloadAll": "Descargar todo",
