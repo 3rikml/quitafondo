@@ -3,16 +3,22 @@
 import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { IconButton } from "@/components/IconButton";
 import { useT } from "@/lib/i18n";
+import { ZOOM_MAX, ZOOM_MIN, type Viewport } from "@/lib/editor/viewport";
 
-export const ZOOM_MIN = 0.25;
-export const ZOOM_MAX = 4;
-const ZOOM_STEP = 0.25;
+const ZOOM_STEP = 1.25;
+
+interface ZoomPillProps {
+  view: Viewport;
+  onZoomChange: (zoom: number) => void;
+  onFit: () => void;
+}
 
 /** Floating zoom pill at the bottom of the stage. */
-export function ZoomPill({ zoom, onZoomChange }: { zoom: number; onZoomChange: (zoom: number) => void }) {
+export function ZoomPill({ view, onZoomChange, onFit }: ZoomPillProps) {
   const t = useT();
-  const step = (direction: 1 | -1) =>
-    onZoomChange(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((zoom + direction * ZOOM_STEP) * 100) / 100)));
+  const { zoom } = view;
+  const fitted = zoom === 1 && view.panX === 0 && view.panY === 0;
+  const step = (direction: 1 | -1) => onZoomChange(Math.round(zoom * ZOOM_STEP ** direction * 100) / 100);
   return (
     <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border bg-popover/90 p-1 shadow-lg backdrop-blur">
       <IconButton label={t("toolbar.zoomOut")} size="icon-sm" className="rounded-full" disabled={zoom <= ZOOM_MIN} onClick={() => step(-1)}>
@@ -22,7 +28,7 @@ export function ZoomPill({ zoom, onZoomChange }: { zoom: number; onZoomChange: (
       <IconButton label={t("toolbar.zoomIn")} size="icon-sm" className="rounded-full" disabled={zoom >= ZOOM_MAX} onClick={() => step(1)}>
         <ZoomIn />
       </IconButton>
-      <IconButton label={t("stage.fit")} size="icon-sm" className="rounded-full" disabled={zoom === 1} onClick={() => onZoomChange(1)}>
+      <IconButton label={t("stage.fit")} size="icon-sm" className="rounded-full" disabled={fitted} onClick={onFit}>
         <Maximize2 />
       </IconButton>
     </div>

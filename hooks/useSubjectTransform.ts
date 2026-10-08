@@ -102,7 +102,9 @@ export function useSubjectTransform({
   function endDrag() {
     const start = dragRef.current;
     dragRef.current = null;
-    if (start && selectedJob) history.record(selectedJob.id, start.before);
+    // A click, or a pinch's first finger, that never moved is not an edit.
+    const moved = selectedJob && (selectedJob.canvas.offsetX !== start?.offsetX || selectedJob.canvas.offsetY !== start?.offsetY);
+    if (start && selectedJob && moved) history.record(selectedJob.id, start.before);
   }
 
   /**

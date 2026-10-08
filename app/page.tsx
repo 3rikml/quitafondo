@@ -30,6 +30,7 @@ import { Filmstrip } from "@/components/editor-ui/Filmstrip";
 import { WelcomeView } from "@/components/editor-ui/WelcomeView";
 import { StageHint, ZoomPill } from "@/components/editor-ui/StageControls";
 import { BrushCursor, type BrushCursorVariant } from "@/components/editor-ui/BrushCursor";
+import { useStageNavigation } from "@/hooks/useStageNavigation";
 import { DropHint, UnsupportedBrowserBanner } from "@/components/editor-ui/Overlays";
 import { TOOLS, type EditorTool } from "@/components/editor-ui/tools";
 
@@ -48,7 +49,10 @@ export default function Home() {
   const [mobileTool, setMobileTool] = useState<EditorTool | null>(null);
   const activeTool = editing ? (isDesktop ? desktopTool : mobileTool) : null;
 
-  const [zoom, setZoom] = useState(1);
+  // Zoom and pan of the stage (wheel, pinch, Space + drag).
+  const [stageElement, setStageElement] = useState<HTMLElement | null>(null);
+  const stageNav = useStageNavigation(stageElement, handleCanvasPointerUp);
+  const { view } = stageNav;
   // Before/after comparison: null while off, otherwise the 0-1 divider position.
   const [compareSplit, setCompareSplit] = useState<number | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -110,6 +114,7 @@ export default function Home() {
   if (selectedJobId !== lastSelectedJobId) {
     setLastSelectedJobId(selectedJobId);
     setCompareSplit(null);
+    stageNav.fit();
   }
   // With images but none selected (e.g. the selected one was removed), show the first.
   if (!selectedJob && selectedJobId === null && jobs.length > 0) {
@@ -256,6 +261,9 @@ export default function Home() {
       else if (key === "d") handleQuickDownload();
       else if (key === "c" && selectedJob.originalUrl) setCompareSplit((split) => (split === null ? 0.5 : null));
       else if (key === "b") selectTool("retouch");
+      else if (e.key === "0") stageNav.fit();
+      else if (e.key === "+" || e.key === "=") stageNav.setZoom(view.zoom * 1.25);
+      else if (e.key === "-") stageNav.setZoom(view.zoom / 1.25);
       else if (e.key === "[" && retouchActive) brush.onBrushSizeChange(Math.max(4, brush.brushSize - 4));
       else if (e.key === "]" && retouchActive) brush.onBrushSizeChange(Math.min(120, brush.brushSize + 4));
       else if (e.key === "Escape") {
@@ -308,6 +316,7 @@ export default function Home() {
 
   const showSubjectHandles = !retouchActive && !crop.active && compareSplit === null && subject.handleRect;
   // Painting tools show their real brush size under the pointer.
+  const navCursor = stageNav.panning ? "cursor-grabbing" : stageNav.spaceHeld ? "cursor-grab" : null;
   const brushVariant: BrushCursorVariant | null = !retouchActive
     ? null
     : retouch.tool === "eraser"
@@ -411,7 +420,10 @@ export default function Home() {
           {isDesktop && toolPanel}
 
           <div className="relative flex min-w-0 flex-1 flex-col">
-            <section className="qf-stage relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 lg:p-10">
+            <section
+              ref={setStageElement}
+              className="qf-stage relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden p-4 lg:p-10"
+            >
               {editing && selectedJob?.cutoutBlob ? (
                 <>
                   <div
@@ -421,13 +433,17 @@ export default function Home() {
                     onPointerLeave={handleCanvasPointerUp}
                     className={cn(
                       "flex h-full w-full items-center justify-center",
-                      !retouchActive ? "cursor-move" : retouch.tool === "magic" ? "cursor-pointer" : "cursor-crosshair"
+                      navCursor ??
+                        (!retouchActive ? "cursor-move" : retouch.tool === "magic" ? "cursor-pointer" : "cursor-crosshair")
                     )}
-                    style={{ transform: `scale(${zoom})` }}
+                    style={{ transform: `translate(${view.panX}px, ${view.panY}px) scale(${view.zoom})` }}
                   >
                     <div
                       ref={canvasWrapperRef}
-                      className={cn("relative shadow-[0_24px_60px_-20px_rgb(0_0_0/0.6)]", brushVariant && "cursor-none")}
+                      className={cn(
+                        "relative shadow-[0_24px_60px_-20px_rgb(0_0_0/0.6)]",
+                        brushVariant && !navCursor && "cursor-none"
+                      )}
                     >
                       <EditorCanvas
                         ref={canvasHandleRef}
@@ -455,7 +471,7 @@ export default function Home() {
                       {crop.active && crop.handleRect && <CropOverlay rect={crop.handleRect} {...crop.overlayHandlers} />}
                     </div>
                   </div>
-                  {brushVariant && (
+                  {brushVariant && !navCursor && (
                     <BrushCursor areaRef={canvasWrapperRef} getScreenRadius={getBrushScreenRadius} variant={brushVariant} />
                   )}
                   {stageHint && (
@@ -464,7 +480,7 @@ export default function Home() {
                     </div>
                   )}
                   <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center">
-                    <ZoomPill zoom={zoom} onZoomChange={setZoom} />
+                    <ZoomPill view={view} onZoomChange={stageNav.setZoom} onFit={stageNav.fit} />
                   </div>
                 </>
               ) : selectedJob && selectedJob.originalUrl ? (
