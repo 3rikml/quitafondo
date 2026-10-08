@@ -29,6 +29,7 @@ import { ToolPanelContent } from "@/components/editor-ui/ToolPanelContent";
 import { Filmstrip } from "@/components/editor-ui/Filmstrip";
 import { WelcomeView } from "@/components/editor-ui/WelcomeView";
 import { StageHint, ZoomPill } from "@/components/editor-ui/StageControls";
+import { BrushCursor, type BrushCursorVariant } from "@/components/editor-ui/BrushCursor";
 import { DropHint, UnsupportedBrowserBanner } from "@/components/editor-ui/Overlays";
 import { TOOLS, type EditorTool } from "@/components/editor-ui/tools";
 
@@ -298,6 +299,20 @@ export default function Home() {
   }
 
   const showSubjectHandles = !retouchActive && !crop.active && compareSplit === null && subject.handleRect;
+  // Painting tools show their real brush size under the pointer.
+  const brushVariant: BrushCursorVariant | null = !retouchActive
+    ? null
+    : retouch.tool === "eraser"
+      ? "eraser"
+      : retouch.tool === "brush"
+        ? retouch.toolbarProps.mode
+        : null;
+  const getBrushScreenRadius = () => {
+    const canvas = canvasWrapperRef.current?.querySelector("canvas");
+    const fit = canvasHandleRef.current?.getFit();
+    if (!canvas || !fit || canvas.width === 0) return null;
+    return retouch.toolbarProps.brushSize * fit.scale * (canvas.getBoundingClientRect().width / canvas.width);
+  };
   const stageHint = crop.active
     ? t("stage.hint.crop")
     : retouchActive
@@ -402,7 +417,10 @@ export default function Home() {
                     )}
                     style={{ transform: `scale(${zoom})` }}
                   >
-                    <div ref={canvasWrapperRef} className="relative shadow-[0_24px_60px_-20px_rgb(0_0_0/0.6)]">
+                    <div
+                      ref={canvasWrapperRef}
+                      className={cn("relative shadow-[0_24px_60px_-20px_rgb(0_0_0/0.6)]", brushVariant && "cursor-none")}
+                    >
                       <EditorCanvas
                         ref={canvasHandleRef}
                         cutoutBlob={selectedJob.cutoutBlob}
@@ -429,6 +447,9 @@ export default function Home() {
                       {crop.active && crop.handleRect && <CropOverlay rect={crop.handleRect} {...crop.overlayHandlers} />}
                     </div>
                   </div>
+                  {brushVariant && (
+                    <BrushCursor areaRef={canvasWrapperRef} getScreenRadius={getBrushScreenRadius} variant={brushVariant} />
+                  )}
                   {stageHint && (
                     <div className="pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-center px-4">
                       <StageHint text={stageHint} />
