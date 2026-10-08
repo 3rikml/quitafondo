@@ -43,3 +43,7 @@ next-env.d.ts
 # internal planning notes, not meant for the public repo
 /docs/superpowers/
 
+
+# playwright
+/test-results/
+/playwright-report/

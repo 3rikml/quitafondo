@@ -26,7 +26,13 @@ npm run test
 npm run build
 ```
 
-Las tres deben pasar; la CI de GitHub corre lo mismo en cada PR.
+Las tres deben pasar; la CI de GitHub corre lo mismo en cada PR, además de las pruebas end-to-end:
+
+```bash
+npx playwright install chromium   # solo la primera vez
+npm run build && npm run test:e2e
+# o con tu Chrome instalado: PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
+```
 
 - Mantén los cambios enfocados: un PR por mejora o corrección.
 - Añade o actualiza pruebas en `__tests__/` junto al código que cambies, sobre todo en `lib/` (lógica pura, fácil de probar).
