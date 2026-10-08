@@ -4,7 +4,6 @@ import {
   CopyCheck,
   Crop,
   Maximize2,
-  Move,
   RectangleVertical,
   RotateCcw,
   RotateCw,
@@ -17,10 +16,11 @@ import { normalizeRotationDeg } from "@/lib/image/canvasFit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { PanelHint, PanelSection } from "@/components/editor-ui/PanelSection";
+import { SliderRow } from "@/components/editor-ui/SliderRow";
 import { useT, type MessageKey } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 const PRESET_DIMENSIONS: Record<Exclude<CanvasPreset, "custom" | "original">, { width: number; height: number }> = {
   square: { width: 1080, height: 1080 },
@@ -29,10 +29,10 @@ const PRESET_DIMENSIONS: Record<Exclude<CanvasPreset, "custom" | "original">, { 
 };
 
 const PRESET_LABELS: Record<CanvasPreset, MessageKey> = {
+  original: "size.preset.original",
   square: "size.preset.square",
   "portrait-4-5": "size.preset.portrait",
   "story-9-16": "size.preset.story",
-  original: "size.preset.original",
   custom: "size.preset.custom",
 };
 
@@ -48,17 +48,14 @@ interface CanvasSizePanelProps {
   value: CanvasConfig;
   onChange: (config: CanvasConfig) => void;
   onApplyToAll: () => void;
-  /** Whether the crop overlay is currently shown over the canvas, letting the
-   * user drag its corners/body. */
+  /** Whether the crop overlay is currently shown over the canvas. */
   cropActive: boolean;
   onStartCrop: () => void;
   onApplyCrop: () => void;
   onCancelCrop: () => void;
-  /** Resets the in-progress crop rectangle back to the auto-detected subject,
-   * without leaving crop mode. */
+  /** Resets the in-progress crop rectangle back to the auto-detected subject, without leaving crop mode. */
   onResetCropDraft: () => void;
-  /** Clears an already-applied crop (`value.cropBox`), going back to
-   * automatic subject detection. Only relevant outside crop mode. */
+  /** Clears an already-applied crop, going back to automatic subject detection. */
   onClearCrop: () => void;
 }
 
@@ -74,236 +71,207 @@ export function CanvasSizePanel({
   onClearCrop,
 }: CanvasSizePanelProps) {
   const t = useT();
+
   function handlePresetChange(preset: CanvasPreset) {
     if (preset === "original" || preset === "custom") {
-      onChange({ ...value, preset, widthPx: value.widthPx, heightPx: value.heightPx });
+      onChange({ ...value, preset });
       return;
     }
     const dims = PRESET_DIMENSIONS[preset];
     onChange({ ...value, preset, widthPx: dims.width, heightPx: dims.height });
   }
 
+  const resetButton = (disabled: boolean, onClick: () => void) => (
+    <Button size="xs" variant="ghost" disabled={disabled} onClick={onClick}>
+      <RotateCcw />
+      {t("common.reset")}
+    </Button>
+  );
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{t("size.title")}</h3>
-        <Button size="sm" variant="ghost" onClick={onApplyToAll}>
-          <CopyCheck />
-          {t("common.applyToAll")}
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        {(Object.keys(PRESET_LABELS) as CanvasPreset[]).map((preset) => {
-          const PresetIcon = PRESET_ICONS[preset];
-          return (
-            <Button
-              key={preset}
-              size="sm"
-              variant={value.preset === preset ? "default" : "outline"}
-              onClick={() => handlePresetChange(preset)}
-              className="justify-start"
-            >
-              <PresetIcon />
-              {t(PRESET_LABELS[preset])}
-            </Button>
-          );
-        })}
-      </div>
-
-      {value.preset === "custom" && (
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="canvas-width">{t("size.width")}</Label>
-            <Input
-              id="canvas-width"
-              type="number"
-              min={1}
-              value={value.widthPx}
-              onChange={(e) => onChange({ ...value, widthPx: Number(e.target.value) })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="canvas-height">{t("size.height")}</Label>
-            <Input
-              id="canvas-height"
-              type="number"
-              min={1}
-              value={value.heightPx}
-              onChange={(e) => onChange({ ...value, heightPx: Number(e.target.value) })}
-            />
-          </div>
+    <>
+      <PanelSection
+        title={t("size.title")}
+        action={
+          <Button size="xs" variant="ghost" onClick={onApplyToAll}>
+            <CopyCheck />
+            {t("common.applyToAll")}
+          </Button>
+        }
+      >
+        <div className="grid grid-cols-2 gap-1.5">
+          {(Object.keys(PRESET_LABELS) as CanvasPreset[]).map((preset) => {
+            const PresetIcon = PRESET_ICONS[preset];
+            const selected = value.preset === preset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => handlePresetChange(preset)}
+                className={cn(
+                  "flex h-9 items-center gap-2 rounded-lg border px-2.5 text-left text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  selected
+                    ? "border-primary/60 bg-primary/12 text-foreground"
+                    : "border-border bg-surface-2 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <PresetIcon className={cn("size-3.5 shrink-0", selected && "text-primary")} />
+                {t(PRESET_LABELS[preset])}
+              </button>
+            );
+          })}
         </div>
-      )}
 
-      <div className="flex items-center justify-between">
-        <Label htmlFor="center-subject">{t("size.center")}</Label>
-        <Switch
-          id="center-subject"
-          checked={value.centerSubject}
-          onCheckedChange={(centerSubject) => onChange({ ...value, centerSubject })}
-        />
-      </div>
-
-      {value.centerSubject && (
-        <div className="flex flex-col gap-1">
-          <Label>{t("size.margin", { value: value.marginPercent })}</Label>
-          <Slider
-            min={0}
-            max={45}
-            step={1}
-            value={[value.marginPercent]}
-            onValueChange={(values) => {
-              const marginPercent = Array.isArray(values) ? values[0] : values;
-              onChange({ ...value, marginPercent });
-            }}
-          />
-        </div>
-      )}
-
-      <Separator />
-
-      <div className="flex items-center justify-between">
-        <Label className="flex items-center gap-1.5">
-          <Crop className="size-3.5" />
-          {t("size.crop")}
-        </Label>
-        {!cropActive && (
-          <div className="flex gap-1.5">
-            {value.cropBox && (
-              <Button size="sm" variant="ghost" onClick={onClearCrop}>
-                <RotateCcw />
-                {t("size.removeCrop")}
-              </Button>
-            )}
-            <Button size="sm" variant="outline" onClick={onStartCrop}>
-              <Crop />
-              {value.cropBox ? t("size.editCrop") : t("size.crop")}
-            </Button>
+        {value.preset === "custom" && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="canvas-width" className="text-xs font-normal">{t("size.width")}</Label>
+              <Input
+                id="canvas-width"
+                type="number"
+                min={1}
+                value={value.widthPx}
+                onChange={(e) => onChange({ ...value, widthPx: Number(e.target.value) })}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="canvas-height" className="text-xs font-normal">{t("size.height")}</Label>
+              <Input
+                id="canvas-height"
+                type="number"
+                min={1}
+                value={value.heightPx}
+                onChange={(e) => onChange({ ...value, heightPx: Number(e.target.value) })}
+              />
+            </div>
           </div>
         )}
-      </div>
-      {cropActive && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-muted-foreground">{t("size.cropHint")}</p>
-          <div className="flex gap-1.5">
-            <Button size="sm" className="flex-1" onClick={onApplyCrop}>
-              {t("common.apply")}
-            </Button>
-            <Button size="sm" variant="outline" onClick={onResetCropDraft}>
+
+        <div className="flex items-center justify-between">
+          <Label htmlFor="center-subject" className="text-xs font-normal text-foreground/90">{t("size.center")}</Label>
+          <Switch
+            id="center-subject"
+            checked={value.centerSubject}
+            onCheckedChange={(centerSubject) => onChange({ ...value, centerSubject })}
+          />
+        </div>
+        {value.centerSubject && (
+          <SliderRow
+            label={t("size.margin")}
+            display={`${value.marginPercent}%`}
+            value={value.marginPercent}
+            min={0}
+            max={45}
+            onChange={(marginPercent) => onChange({ ...value, marginPercent })}
+          />
+        )}
+      </PanelSection>
+
+      <PanelSection
+        title={t("size.crop")}
+        action={
+          !cropActive && value.cropBox ? (
+            <Button size="xs" variant="ghost" onClick={onClearCrop}>
               <RotateCcw />
-              {t("common.reset")}
+              {t("size.removeCrop")}
             </Button>
-            <Button size="sm" variant="ghost" onClick={onCancelCrop}>
-              {t("common.cancel")}
-            </Button>
+          ) : undefined
+        }
+      >
+        {cropActive ? (
+          <>
+            <PanelHint>{t("size.cropHint")}</PanelHint>
+            <div className="flex gap-1.5">
+              <Button size="sm" className="flex-1" onClick={onApplyCrop}>
+                {t("common.apply")}
+              </Button>
+              <Button size="sm" variant="outline" onClick={onResetCropDraft}>
+                <RotateCcw />
+                {t("common.reset")}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={onCancelCrop}>
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <Button variant="outline" onClick={onStartCrop}>
+            <Crop />
+            {value.cropBox ? t("size.editCrop") : t("size.crop")}
+          </Button>
+        )}
+      </PanelSection>
+
+      <PanelSection
+        title={t("size.position")}
+        action={resetButton(value.offsetX === 0 && value.offsetY === 0 && value.manualScale === 1, () =>
+          onChange({ ...value, offsetX: 0, offsetY: 0, manualScale: 1 })
+        )}
+      >
+        <PanelHint>{t("size.positionHint")}</PanelHint>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="canvas-offset-x" className="text-xs font-normal">X (px)</Label>
+            <Input
+              id="canvas-offset-x"
+              type="number"
+              step={1}
+              value={Math.round(value.offsetX)}
+              onChange={(e) => onChange({ ...value, offsetX: Number(e.target.value) || 0 })}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="canvas-offset-y" className="text-xs font-normal">Y (px)</Label>
+            <Input
+              id="canvas-offset-y"
+              type="number"
+              step={1}
+              value={Math.round(value.offsetY)}
+              onChange={(e) => onChange({ ...value, offsetY: Number(e.target.value) || 0 })}
+            />
           </div>
         </div>
-      )}
-
-      <Separator />
-
-      <div className="flex items-center justify-between">
-        <Label className="flex items-center gap-1.5">
-          <Move className="size-3.5" />
-          {t("size.position")}
-        </Label>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={value.offsetX === 0 && value.offsetY === 0 && value.manualScale === 1}
-          onClick={() => onChange({ ...value, offsetX: 0, offsetY: 0, manualScale: 1 })}
-        >
-          <RotateCcw />
-          {t("common.reset")}
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">{t("size.positionHint")}</p>
-      <div className="flex items-center gap-2">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="canvas-offset-x">X (px)</Label>
-          <Input
-            id="canvas-offset-x"
-            type="number"
-            step={1}
-            value={Math.round(value.offsetX)}
-            onChange={(e) => onChange({ ...value, offsetX: Number(e.target.value) || 0 })}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="canvas-offset-y">Y (px)</Label>
-          <Input
-            id="canvas-offset-y"
-            type="number"
-            step={1}
-            value={Math.round(value.offsetY)}
-            onChange={(e) => onChange({ ...value, offsetY: Number(e.target.value) || 0 })}
-          />
-        </div>
-      </div>
-      <div className="flex flex-col gap-1">
-        <Label>{t("size.subjectSize", { value: Math.round(value.manualScale * 100) })}</Label>
-        <Slider
+        <SliderRow
+          label={t("size.subjectSize")}
+          display={`${Math.round(value.manualScale * 100)}%`}
+          value={Math.round(value.manualScale * 100)}
           min={10}
           max={300}
-          step={1}
-          value={[Math.round(value.manualScale * 100)]}
-          onValueChange={(values) => {
-            const percent = Array.isArray(values) ? values[0] : values;
-            onChange({ ...value, manualScale: percent / 100 });
-          }}
+          onChange={(percent) => onChange({ ...value, manualScale: percent / 100 })}
         />
-      </div>
+      </PanelSection>
 
-      <Separator />
-
-      <div className="flex items-center justify-between">
-        <Label className="flex items-center gap-1.5">
-          <RotateCw className="size-3.5" />
-          {t("size.rotation")}
-        </Label>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={value.rotationDeg === 0}
-          onClick={() => onChange({ ...value, rotationDeg: 0 })}
-        >
-          <RotateCcw />
-          {t("common.reset")}
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground">{t("size.rotationHint")}</p>
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onChange({ ...value, rotationDeg: normalizeRotationDeg(value.rotationDeg - 90) })}
-        >
-          <RotateCcw />
-          {t("size.rotateLeft")}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => onChange({ ...value, rotationDeg: normalizeRotationDeg(value.rotationDeg + 90) })}
-        >
-          <RotateCw />
-          {t("size.rotateRight")}
-        </Button>
-      </div>
-      <div className="flex flex-col gap-1">
-        <Label>{t("size.angle", { value: Math.round(value.rotationDeg) })}</Label>
-        <Slider
+      <PanelSection
+        title={t("size.rotation")}
+        action={resetButton(value.rotationDeg === 0, () => onChange({ ...value, rotationDeg: 0 }))}
+      >
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button
+            variant="outline"
+            onClick={() => onChange({ ...value, rotationDeg: normalizeRotationDeg(value.rotationDeg - 90) })}
+          >
+            <RotateCcw />
+            {t("size.rotateLeft")}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onChange({ ...value, rotationDeg: normalizeRotationDeg(value.rotationDeg + 90) })}
+          >
+            <RotateCw />
+            {t("size.rotateRight")}
+          </Button>
+        </div>
+        <SliderRow
+          label={t("size.angle")}
+          display={`${Math.round(value.rotationDeg)}°`}
+          value={value.rotationDeg}
           min={-180}
           max={180}
-          step={1}
-          value={[value.rotationDeg]}
-          onValueChange={(values) => {
-            const rotationDeg = Array.isArray(values) ? values[0] : values;
-            onChange({ ...value, rotationDeg: normalizeRotationDeg(rotationDeg) });
-          }}
+          onChange={(rotationDeg) => onChange({ ...value, rotationDeg: normalizeRotationDeg(rotationDeg) })}
         />
-      </div>
-    </div>
+        <PanelHint>{t("size.rotationHint")}</PanelHint>
+      </PanelSection>
+    </>
   );
 }

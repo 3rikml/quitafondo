@@ -39,6 +39,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-stage: var(--stage);
+  --color-surface-2: var(--surface-2);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -84,42 +86,51 @@
   /* Transparency checkerboard behind the editor canvas. */
   --checker-light: oklch(0.93 0 0);
   --checker-dark: oklch(0.82 0 0);
+  /* Area around the canvas, and its dot grid. */
+  --stage: oklch(0.955 0.003 285);
+  --stage-dot: oklch(0 0 0 / 7%);
+  /* Raised controls inside panels (segmented controls, swatch wells). */
+  --surface-2: oklch(0.965 0.003 285);
 }
 
+/* Dark is the default look: cool, slightly blue-tinted neutrals so photos pop. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.78 0.13 195);
-  --primary-foreground: oklch(0.16 0.03 195);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.28 0.07 195);
-  --accent-foreground: oklch(0.88 0.06 195);
+  --background: oklch(0.165 0.006 285);
+  --foreground: oklch(0.96 0.004 285);
+  --card: oklch(0.2 0.007 285);
+  --card-foreground: oklch(0.96 0.004 285);
+  --popover: oklch(0.225 0.008 285);
+  --popover-foreground: oklch(0.96 0.004 285);
+  --primary: oklch(0.8 0.14 190);
+  --primary-foreground: oklch(0.18 0.04 200);
+  --secondary: oklch(0.255 0.008 285);
+  --secondary-foreground: oklch(0.96 0.004 285);
+  --muted: oklch(0.245 0.008 285);
+  --muted-foreground: oklch(0.7 0.012 285);
+  --accent: oklch(0.29 0.04 195);
+  --accent-foreground: oklch(0.9 0.06 190);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.12 195);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.75 0.13 190);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.78 0.13 195);
-  --sidebar-primary-foreground: oklch(0.16 0.03 195);
-  --sidebar-accent: oklch(0.28 0.07 195);
-  --sidebar-accent-foreground: oklch(0.88 0.06 195);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.7 0.12 195);
-  --checker-light: oklch(0.42 0 0);
-  --checker-dark: oklch(0.33 0 0);
+  --sidebar: oklch(0.2 0.007 285);
+  --sidebar-foreground: oklch(0.96 0.004 285);
+  --sidebar-primary: oklch(0.8 0.14 190);
+  --sidebar-primary-foreground: oklch(0.18 0.04 200);
+  --sidebar-accent: oklch(0.29 0.04 195);
+  --sidebar-accent-foreground: oklch(0.9 0.06 190);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.75 0.13 190);
+  --checker-light: oklch(0.36 0.004 285);
+  --checker-dark: oklch(0.29 0.004 285);
+  --stage: oklch(0.135 0.005 285);
+  --stage-dot: oklch(1 0 0 / 6%);
+  --surface-2: oklch(0.155 0.006 285);
 }
 
 @layer base {
@@ -163,5 +174,21 @@
   .qf-scan {
     animation: none;
     top: 33%;
+  }
+}
+
+/* The editor's stage: a quiet dot grid that frames the canvas. */
+.qf-stage {
+  background-color: var(--stage);
+  background-image: radial-gradient(var(--stage-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

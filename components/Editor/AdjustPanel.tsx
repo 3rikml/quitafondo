@@ -4,7 +4,8 @@ import { RotateCcw, Wand } from "lucide-react";
 import type { AdjustConfig } from "@/lib/types";
 import { NEUTRAL_ADJUST, isNeutralAdjust } from "@/lib/image/colorAdjust";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+import { PanelHint, PanelSection } from "@/components/editor-ui/PanelSection";
+import { SliderRow } from "@/components/editor-ui/SliderRow";
 import { useT, type MessageKey } from "@/lib/i18n";
 
 interface AdjustPanelProps {
@@ -27,44 +28,31 @@ const signed = (value: number) => (value > 0 ? `+${value}` : `${value}`);
 export function AdjustPanel({ value, onChange, onHarmonize }: AdjustPanelProps) {
   const t = useT();
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{t("adjust.title")}</h3>
-        <Button size="sm" variant="ghost" disabled={isNeutralAdjust(value)} onClick={() => onChange(NEUTRAL_ADJUST)}>
+    <PanelSection
+      title={t("adjust.title")}
+      action={
+        <Button size="xs" variant="ghost" disabled={isNeutralAdjust(value)} onClick={() => onChange(NEUTRAL_ADJUST)}>
           <RotateCcw />
           {t("common.reset")}
         </Button>
-      </div>
-      <Button
-        size="sm"
-        variant="outline"
-        className="self-start"
-        disabled={!onHarmonize}
-        onClick={() => onHarmonize?.()}
-        title={onHarmonize ? undefined : t("adjust.harmonizeNeedsBackground")}
-      >
+      }
+    >
+      <Button variant="secondary" disabled={!onHarmonize} onClick={() => onHarmonize?.()}>
         <Wand />
         {t("adjust.harmonize")}
       </Button>
-      {!onHarmonize && <p className="-mt-1.5 text-xs text-muted-foreground">{t("adjust.harmonizeNeedsBackground")}</p>}
+      {!onHarmonize && <PanelHint className="-mt-1">{t("adjust.harmonizeNeedsBackground")}</PanelHint>}
       {SLIDERS.map(({ key, label }) => (
-        <div key={key} className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">
-            {t(label)} ({signed(value[key])})
-          </span>
-          <Slider
-            min={-100}
-            max={100}
-            step={1}
-            value={[value[key]]}
-            aria-label={t(label)}
-            onValueChange={(values) => {
-              const next = Array.isArray(values) ? values[0] : (values as number);
-              onChange({ ...value, [key]: next });
-            }}
-          />
-        </div>
+        <SliderRow
+          key={key}
+          label={t(label)}
+          display={signed(value[key])}
+          value={value[key]}
+          min={-100}
+          max={100}
+          onChange={(next) => onChange({ ...value, [key]: next })}
+        />
       ))}
-    </div>
+    </PanelSection>
   );
 }

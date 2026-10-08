@@ -2,8 +2,9 @@
 
 import type { EdgeConfig } from "@/lib/types";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { PanelSection } from "@/components/editor-ui/PanelSection";
+import { SliderRow } from "@/components/editor-ui/SliderRow";
 import { useT } from "@/lib/i18n";
 
 interface EdgePanelProps {
@@ -11,39 +12,30 @@ interface EdgePanelProps {
   onChange: (edge: EdgeConfig) => void;
 }
 
-function sliderValue(values: number | readonly number[]): number {
-  return Array.isArray(values) ? values[0] : (values as number);
-}
-
 /** Fine-tunes the cutout edge: soften it, grow/shrink it, and remove color halos. */
 export function EdgePanel({ value, onChange }: EdgePanelProps) {
   const t = useT();
   const shiftLabel = value.shift === 0 ? t("edge.shiftNone") : value.shift > 0 ? `+${value.shift} px` : `${value.shift} px`;
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">{t("edge.title")}</h3>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">{t("edge.feather", { value: value.feather })}</span>
-        <Slider
-          min={0}
-          max={10}
-          step={1}
-          value={[value.feather]}
-          onValueChange={(values) => onChange({ ...value, feather: sliderValue(values) })}
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">{t("edge.shift", { value: shiftLabel })}</span>
-        <Slider
-          min={-5}
-          max={5}
-          step={1}
-          value={[value.shift]}
-          onValueChange={(values) => onChange({ ...value, shift: sliderValue(values) })}
-        />
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <Label htmlFor="edge-decontaminate" className="text-xs text-muted-foreground">
+    <PanelSection title={t("edge.title")}>
+      <SliderRow
+        label={t("edge.feather")}
+        display={`${value.feather} px`}
+        value={value.feather}
+        min={0}
+        max={10}
+        onChange={(feather) => onChange({ ...value, feather })}
+      />
+      <SliderRow
+        label={t("edge.shift")}
+        display={shiftLabel}
+        value={value.shift}
+        min={-5}
+        max={5}
+        onChange={(shift) => onChange({ ...value, shift })}
+      />
+      <div className="flex items-center justify-between gap-3">
+        <Label htmlFor="edge-decontaminate" className="text-xs leading-snug font-normal text-foreground/90">
           {t("edge.decontaminate")}
         </Label>
         <Switch
@@ -52,6 +44,6 @@ export function EdgePanel({ value, onChange }: EdgePanelProps) {
           onCheckedChange={(decontaminate) => onChange({ ...value, decontaminate })}
         />
       </div>
-    </div>
+    </PanelSection>
   );
 }

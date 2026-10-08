@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, LoaderCircle, RotateCcw, TriangleAlert } from "lucide-react";
+import { LoaderCircle, RotateCcw, TriangleAlert } from "lucide-react";
 import type { ImageJob } from "@/lib/types";
 import { DOWNLOAD_PROGRESS_SHARE } from "@/lib/ai/protocol";
 import { Button } from "@/components/ui/button";
@@ -49,25 +49,6 @@ export function ProcessingView({ job, onRetry }: { job: ImageJob; onRetry: () =>
           {progressLabel(job, t)}
         </p>
       )}
-    </div>
-  );
-}
-
-/** Shown when no image is selected yet. */
-export function EmptyCanvasView() {
-  const t = useT();
-  return (
-    <div className="flex max-w-xs flex-col items-center gap-3 text-center">
-      <span className="flex size-11 items-center justify-center rounded-full bg-background text-muted-foreground ring-1 ring-border">
-        <ImagePlus className="size-5" strokeWidth={1.75} />
-      </span>
-      <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium">{t("canvas.emptyTitle")}</p>
-        <p className="text-sm text-muted-foreground">
-          {t("canvas.emptyHintBefore")} <kbd className="rounded border bg-background px-1 font-mono text-xs">Ctrl</kbd>+
-          <kbd className="rounded border bg-background px-1 font-mono text-xs">V</kbd> {t("canvas.emptyHintAfter")}
-        </p>
-      </div>
     </div>
   );
 }

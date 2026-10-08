@@ -96,8 +96,6 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
     paintAt,
     /** Props for `<RetouchToolbar>`. */
     toolbarProps: {
-      active,
-      onActiveChange: setActive,
       mode,
       onModeChange: setMode,
       brushSize,

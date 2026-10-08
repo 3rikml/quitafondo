@@ -1,12 +1,15 @@
 "use client";
 
-import { Bandage, Eraser, MousePointerClick, PaintbrushVertical, Sparkles, Trash2, Undo2, Wand2 } from "lucide-react";
+import { Bandage, Eraser, MousePointerClick, PaintbrushVertical, Sparkles, Trash2, Undo2 } from "lucide-react";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 import { canvasPointToSource, type FitResult } from "@/lib/image/canvasFit";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PanelHint, PanelSection } from "@/components/editor-ui/PanelSection";
+import { SliderRow } from "@/components/editor-ui/SliderRow";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { useT } from "@/lib/i18n";
 
@@ -19,8 +22,6 @@ export type RetouchMode = "erase" | "restore";
 export type RetouchTool = "brush" | "magic" | "eraser";
 
 export interface RetouchToolbarProps {
-  active: boolean;
-  onActiveChange: (active: boolean) => void;
   mode: RetouchMode;
   onModeChange: (mode: RetouchMode) => void;
   brushSize: number;
@@ -61,8 +62,6 @@ export interface RetouchToolbarProps {
 }
 
 export function RetouchToolbar({
-  active,
-  onActiveChange,
   mode,
   onModeChange,
   brushSize,
@@ -83,196 +82,142 @@ export function RetouchToolbar({
     onToolChange("brush");
     onModeChange(brushMode);
   };
+  const tools: { id: string; label: string; icon: typeof Eraser; selected: boolean; onClick: () => void }[] = [
+    { id: "erase", label: t("retouch.erase"), icon: Eraser, selected: tool === "brush" && mode === "erase", onClick: () => selectBrush("erase") },
+    { id: "restore", label: t("retouch.restore"), icon: PaintbrushVertical, selected: tool === "brush" && mode === "restore", onClick: () => selectBrush("restore") },
+    { id: "magic", label: t("retouch.magic"), icon: Sparkles, selected: tool === "magic", onClick: () => onToolChange("magic") },
+    { id: "eraser", label: t("retouch.eraser"), icon: Bandage, selected: tool === "eraser", onClick: () => onToolChange("eraser") },
+  ];
+  const brushSizeRow = (
+    <SliderRow
+      label={t("retouch.brushSize")}
+      display={`${brushSize} px`}
+      value={brushSize}
+      min={4}
+      max={120}
+      onChange={onBrushSizeChange}
+    />
+  );
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{t("retouch.title")}</h3>
-        <Button
-          size="sm"
-          variant={active ? "default" : "outline"}
-          onClick={() => onActiveChange(!active)}
-        >
-          <Wand2 className="size-4" />
-          {active ? t("retouch.deactivate") : t("retouch.activate")}
-        </Button>
+    <>
+      <div className="grid grid-cols-4 gap-1.5" role="group" aria-label={t("retouch.title")}>
+        {tools.map(({ id, label, icon: Icon, selected, onClick }) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={selected}
+            onClick={onClick}
+            className={cn(
+              "flex h-16 flex-col items-center justify-center gap-1.5 rounded-xl border text-[11px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              selected
+                ? "border-primary/60 bg-primary/12 text-primary"
+                : "border-border bg-surface-2 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icon className="size-5" strokeWidth={1.75} />
+            {label}
+          </button>
+        ))}
       </div>
 
-      {active && (
-        <>
+      {tool === "magic" && (
+        <PanelSection title={t("retouch.magic")}>
+          <Tabs value={magic.add ? "add" : "remove"} onValueChange={(next) => magic.onAddChange(next === "add")}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="remove">{t("retouch.magicRemove")}</TabsTrigger>
+              <TabsTrigger value="add">{t("retouch.magicAdd")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <PanelHint className="flex items-start gap-1.5">
+            <MousePointerClick className="mt-0.5 size-3.5 shrink-0" />
+            {t(magic.add ? "retouch.magicHintAdd" : "retouch.magicHintRemove")}
+          </PanelHint>
+          {magic.sizes && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-foreground/90">{t("retouch.selectionSize")}</span>
+              <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${magic.sizes.count}, 1fr)` }}>
+                {(magic.sizes.count === 2
+                  ? [t("retouch.size.small"), t("retouch.size.large")]
+                  : [t("retouch.size.small"), t("retouch.size.medium"), t("retouch.size.large")]
+                ).map((label, index) => (
+                  <Button
+                    key={label}
+                    size="sm"
+                    variant={magic.sizes?.index === index ? "secondary" : "outline"}
+                    aria-pressed={magic.sizes?.index === index}
+                    onClick={() => magic.onSizeChange(index)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+          {magic.statusText && (
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {magic.statusText}
+            </p>
+          )}
+        </PanelSection>
+      )}
+
+      {tool === "eraser" && (
+        <PanelSection title={t("retouch.eraser")}>
+          <PanelHint>{t("eraser.hint")}</PanelHint>
+          {brushSizeRow}
+          <Button onClick={eraser.onErase} disabled={!eraser.canErase || eraser.busy}>
+            <Bandage />
+            {t("eraser.apply")}
+          </Button>
           <div className="grid grid-cols-2 gap-1.5">
-            <Button
-              size="sm"
-              variant={tool === "brush" && mode === "erase" ? "default" : "outline"}
-              onClick={() => selectBrush("erase")}
-            >
-              <Eraser className="size-4" />
-              {t("retouch.erase")}
+            <Button size="sm" variant="ghost" onClick={eraser.onClear} disabled={!eraser.canErase || eraser.busy}>
+              <Trash2 />
+              {t("eraser.clear")}
             </Button>
-            <Button
-              size="sm"
-              variant={tool === "brush" && mode === "restore" ? "default" : "outline"}
-              onClick={() => selectBrush("restore")}
-            >
-              <PaintbrushVertical className="size-4" />
-              {t("retouch.restore")}
-            </Button>
-            <Button size="sm" variant={tool === "magic" ? "default" : "outline"} onClick={() => onToolChange("magic")}>
-              <Sparkles className="size-4" />
-              {t("retouch.magic")}
-            </Button>
-            <Button size="sm" variant={tool === "eraser" ? "default" : "outline"} onClick={() => onToolChange("eraser")}>
-              <Bandage className="size-4" />
-              {t("retouch.eraser")}
+            <Button size="sm" variant="ghost" onClick={eraser.onUndo} disabled={!eraser.canUndo || eraser.busy}>
+              <Undo2 />
+              {t("eraser.undo")}
             </Button>
           </div>
-
-          {tool === "eraser" && (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-muted-foreground">{t("eraser.hint")}</p>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">{t("retouch.brushSize", { value: brushSize })}</span>
-                <Slider
-                  min={4}
-                  max={120}
-                  step={1}
-                  value={[brushSize]}
-                  aria-label={t("shortcut.brushSize")}
-                  onValueChange={(values) => onBrushSizeChange(Array.isArray(values) ? values[0] : (values as number))}
-                />
-              </div>
-              <Button size="sm" onClick={eraser.onErase} disabled={!eraser.canErase || eraser.busy}>
-                <Bandage />
-                {t("eraser.apply")}
-              </Button>
-              <div className="grid grid-cols-2 gap-1.5">
-                <Button size="sm" variant="ghost" onClick={eraser.onClear} disabled={!eraser.canErase || eraser.busy}>
-                  <Trash2 />
-                  {t("eraser.clear")}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={eraser.onUndo} disabled={!eraser.canUndo || eraser.busy}>
-                  <Undo2 />
-                  {t("eraser.undo")}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground" aria-live="polite">
-                {eraser.statusText ?? t("eraser.firstUse")}
-              </p>
-            </div>
-          )}
-
-          {tool === "magic" && (
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-1.5">
-                <Button size="sm" variant={!magic.add ? "secondary" : "ghost"} onClick={() => magic.onAddChange(false)}>
-                  {t("retouch.magicRemove")}
-                </Button>
-                <Button size="sm" variant={magic.add ? "secondary" : "ghost"} onClick={() => magic.onAddChange(true)}>
-                  {t("retouch.magicAdd")}
-                </Button>
-              </div>
-              <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                <MousePointerClick className="mt-0.5 size-3.5 shrink-0" />
-                {t(magic.add ? "retouch.magicHintAdd" : "retouch.magicHintRemove")}
-              </p>
-              {magic.sizes && (
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">{t("retouch.selectionSize")}</span>
-                  <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${magic.sizes.count}, 1fr)` }}>
-                    {(magic.sizes.count === 2
-                      ? [t("retouch.size.small"), t("retouch.size.large")]
-                      : [t("retouch.size.small"), t("retouch.size.medium"), t("retouch.size.large")]
-                    ).map(
-                      (label, index) => (
-                        <Button
-                          key={label}
-                          size="sm"
-                          variant={magic.sizes?.index === index ? "secondary" : "outline"}
-                          aria-pressed={magic.sizes?.index === index}
-                          onClick={() => magic.onSizeChange(index)}
-                        >
-                          {label}
-                        </Button>
-                      )
-                    )}
-                  </div>
-                </div>
-              )}
-              {magic.statusText && (
-                <p className="text-xs text-muted-foreground" aria-live="polite">
-                  {magic.statusText}
-                </p>
-              )}
-            </div>
-          )}
-
-          {tool === "brush" && (
-            <>
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">
-                {t("retouch.brushSize", { value: brushSize })}
-              </span>
-              <Slider
-                min={4}
-                max={120}
-                step={1}
-                value={[brushSize]}
-                onValueChange={(values) => {
-                  const size = Array.isArray(values) ? values[0] : values;
-                  onBrushSizeChange(size);
-                }}
-              />
-            </div>
-
-            {!smart && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">
-                  {t("retouch.hardness", { value: Math.round(hardness * 100) })}
-                </span>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[Math.round(hardness * 100)]}
-                  onValueChange={(values) => {
-                    const percent = Array.isArray(values) ? values[0] : values;
-                    onHardnessChange(percent / 100);
-                  }}
-                />
-              </div>
-            )}
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="smart-retouch" className="text-xs text-muted-foreground">
-                {t("retouch.smart")}
-              </Label>
-              <Switch
-                id="smart-retouch"
-                checked={smart}
-                onCheckedChange={onSmartChange}
-              />
-            </div>
-            {smart && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">
-                  {t("retouch.sensitivity", { value: tolerance })}
-                </span>
-                <Slider
-                  min={1}
-                  max={100}
-                  step={1}
-                  value={[tolerance]}
-                  onValueChange={(values) => {
-                    const t = Array.isArray(values) ? values[0] : values;
-                    onToleranceChange(t);
-                  }}
-                />
-              </div>
-            )}
-            </>
-          )}
-        </>
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {eraser.statusText ?? t("eraser.firstUse")}
+          </p>
+        </PanelSection>
       )}
-    </div>
+
+      {tool === "brush" && (
+        <PanelSection title={mode === "erase" ? t("retouch.erase") : t("retouch.restore")}>
+          {brushSizeRow}
+          {!smart && (
+            <SliderRow
+              label={t("retouch.hardness")}
+              display={`${Math.round(hardness * 100)}%`}
+              value={Math.round(hardness * 100)}
+              min={0}
+              max={100}
+              onChange={(percent) => onHardnessChange(percent / 100)}
+            />
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="smart-retouch" className="text-xs font-normal text-foreground/90">
+              {t("retouch.smart")}
+            </Label>
+            <Switch id="smart-retouch" checked={smart} onCheckedChange={onSmartChange} />
+          </div>
+          {smart && (
+            <SliderRow
+              label={t("retouch.sensitivity")}
+              display={`${tolerance}%`}
+              value={tolerance}
+              min={1}
+              max={100}
+              onChange={onToleranceChange}
+            />
+          )}
+        </PanelSection>
+      )}
+    </>
   );
 }
 

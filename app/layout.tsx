@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
-import { ThemeSync } from "@/components/ThemeSync";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,8 +34,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#121217" },
+    { media: "(prefers-color-scheme: dark)", color: "#121217" },
   ],
 };
 
@@ -43,23 +43,23 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
+      // Dark by default; the pre-paint script below switches to light only if the user chose it.
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
-        {/* Runs before first paint so the correct palette is applied without a
-            flash of the light theme. ThemeSync then follows OS changes live. */}
+        {/* Runs before first paint so a saved light-theme choice applies without a flash. */}
         <script
           dangerouslySetInnerHTML={{
-            __html:
-              "try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.toggle('dark',d)}catch(e){}",
+            __html: "try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.remove('dark')}catch(e){}",
           }}
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <ThemeSync />
         <ServiceWorkerRegistration />
-        <TooltipProvider delay={300}>{children}</TooltipProvider>
+        <TooltipProvider delay={300}>
+          <Toaster>{children}</Toaster>
+        </TooltipProvider>
       </body>
     </html>
   );

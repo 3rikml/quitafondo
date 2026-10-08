@@ -29,30 +29,34 @@ async function download(page: Page): Promise<Buffer> {
 test("brightness is applied to the subject in the downloaded image", async ({ page }) => {
   await page.goto("/");
   await page.locator('input[type="file"]').first().setInputFiles(await makeTestPhoto(page));
-  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeEnabled();
 
   const before = await subjectLuminance(page, await download(page));
+  await page.getByRole("button", { name: "Ajustes", exact: true }).click();
   const brightness = page.getByRole("slider", { name: "Brillo" });
   await brightness.focus();
   for (let i = 0; i < 40; i++) await page.keyboard.press("ArrowRight");
-  await expect(page.getByText("Brillo (+40)")).toBeVisible();
+  await expect(brightness).toHaveAttribute("aria-valuenow", "40");
   const after = await subjectLuminance(page, await download(page));
   expect(after).toBeGreaterThan(before + 15);
 
   await page.getByRole("button", { name: "Restablecer", exact: true }).first().click();
-  await expect(page.getByText("Brillo (0)")).toBeVisible();
+  await expect(brightness).toHaveAttribute("aria-valuenow", "0");
 });
 
 test("match the background cools a warm subject placed on a cool ocean gradient", async ({ page }) => {
   await page.goto("/");
   await page.locator('input[type="file"]').first().setInputFiles(await makeTestPhoto(page));
-  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeEnabled();
 
+  await page.getByRole("button", { name: "Ajustes", exact: true }).click();
   const harmonize = page.getByRole("button", { name: "Armonizar con el fondo" });
   await expect(harmonize).toBeDisabled(); // transparent background: nothing to match
 
   // The synthetic subject is red and yellow (warm); "Océano" is blue (cool).
+  await page.getByRole("button", { name: "Fondo", exact: true }).click();
   await page.getByRole("button", { name: "Océano" }).click();
+  await page.getByRole("button", { name: "Ajustes", exact: true }).click();
   await expect(harmonize).toBeEnabled();
   await harmonize.click();
   const temperature = page.getByRole("slider", { name: "Temperatura" });

@@ -11,13 +11,18 @@ test("background preset and shadow are baked into the ZIP export", async ({ page
     .locator('input[type="file"]')
     .first()
     .setInputFiles([await makeTestPhoto(page, "uno.png"), await makeTestPhoto(page, "dos.png")]);
-  await expect(page.getByText("Listo")).toHaveCount(2);
+  // Both finished: the download menu offers a ZIP of the two.
+  await page.getByRole("button", { name: "Opciones de descarga" }).click();
+  const downloadAll = page.getByRole("button", { name: /Descargar todo · 2/ });
+  await expect(downloadAll).toBeEnabled();
+  await page.keyboard.press("Escape");
 
-  await page.getByText("uno.png").click();
+  await page.getByRole("button", { name: "Abrir uno.png" }).click();
   await page.getByRole("button", { name: "Negro" }).click();
   await page.getByRole("tab", { name: "Contacto" }).click();
 
-  const [zip] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: /Descargar todo/ }).click()]);
+  await page.getByRole("button", { name: "Opciones de descarga" }).click();
+  const [zip] = await Promise.all([page.waitForEvent("download"), downloadAll.click()]);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "quitafondo-zip-"));
   const zipPath = path.join(dir, "export.zip");
   await zip.saveAs(zipPath);

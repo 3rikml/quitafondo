@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { PanelSection } from "@/components/editor-ui/PanelSection";
 import { useT, type MessageKey } from "@/lib/i18n";
 
 /** One-click starting points; every one stays fully editable in its tab below. */
@@ -63,15 +64,15 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{t("background.title")}</h3>
-        <Button size="sm" variant="ghost" onClick={onApplyToAll}>
+    <PanelSection
+      title={t("background.title")}
+      action={
+        <Button size="xs" variant="ghost" onClick={onApplyToAll}>
           <CopyCheck />
           {t("common.applyToAll")}
         </Button>
-      </div>
-
+      }
+    >
       <div className="grid grid-cols-6 gap-1.5" role="group" aria-label={t("background.presets")}>
         {PRESETS.map(({ label, config }) => (
           <button
@@ -82,8 +83,8 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
             aria-pressed={isSameBackground(value, config)}
             onClick={() => onChange(config)}
             className={cn(
-              "aspect-square rounded-md border shadow-xs transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-              isSameBackground(value, config) && "ring-2 ring-primary ring-offset-1 ring-offset-background"
+              "aspect-square rounded-lg border border-foreground/15 shadow-xs transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+              isSameBackground(value, config) && "ring-2 ring-primary ring-offset-2 ring-offset-card"
             )}
             style={swatchStyle(config)}
           />
@@ -202,7 +203,7 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </PanelSection>
   );
 
   function handleTabChange(kind: BackgroundConfig["kind"]) {

@@ -16,7 +16,7 @@ test("paste a photo, remove its background and download a transparent PNG", asyn
   }, photo.buffer.toString("base64"));
 
   const download = page.getByRole("button", { name: /Descargar PNG/ });
-  await expect(download).toBeVisible();
+  await expect(download).toBeEnabled();
 
   const [file] = await Promise.all([page.waitForEvent("download"), download.click()]);
   expect(file.suggestedFilename()).toBe("pegada.png");
@@ -31,7 +31,7 @@ test("paste a photo, remove its background and download a transparent PNG", asyn
 test("before/after comparison and undo of a brush stroke", async ({ page }) => {
   await page.goto("/");
   await page.locator('input[type="file"]').first().setInputFiles(await makeTestPhoto(page));
-  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeEnabled();
 
   await page.getByRole("button", { name: "Comparar" }).click();
   await expect(page.getByLabel("Comparar original y resultado")).toBeVisible();
@@ -48,7 +48,7 @@ test("before/after comparison and undo of a brush stroke", async ({ page }) => {
     });
 
   const before = await alphaSum();
-  await page.getByRole("button", { name: "Activar retoque" }).click();
+  await page.getByRole("button", { name: "Retoque", exact: true }).click();
   const box = (await canvas.boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.52);
   await page.mouse.down();

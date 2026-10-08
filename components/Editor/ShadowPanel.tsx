@@ -1,8 +1,9 @@
 "use client";
 
 import type { ShadowConfig, ShadowKind } from "@/lib/types";
-import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PanelHint, PanelSection } from "@/components/editor-ui/PanelSection";
+import { SliderRow } from "@/components/editor-ui/SliderRow";
 import { useT, type MessageKey } from "@/lib/i18n";
 
 interface ShadowPanelProps {
@@ -19,8 +20,7 @@ const KIND_LABELS: Record<ShadowKind, MessageKey> = {
 export function ShadowPanel({ value, onChange }: ShadowPanelProps) {
   const t = useT();
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">{t("shadow.title")}</h3>
+    <PanelSection title={t("shadow.title")}>
       <Tabs value={value.kind} onValueChange={(kind) => onChange({ ...value, kind: kind as ShadowKind })}>
         <TabsList className="grid w-full grid-cols-3">
           {(Object.keys(KIND_LABELS) as ShadowKind[]).map((kind) => (
@@ -31,23 +31,18 @@ export function ShadowPanel({ value, onChange }: ShadowPanelProps) {
         </TabsList>
       </Tabs>
       {value.kind !== "none" && (
-        <div className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">{t("shadow.intensity", { value: value.intensity })}</span>
-          <Slider
-            min={0}
-            max={100}
-            step={1}
-            value={[value.intensity]}
-            onValueChange={(values) => {
-              const intensity = Array.isArray(values) ? values[0] : values;
-              onChange({ ...value, intensity });
-            }}
-          />
-        </div>
+        <SliderRow
+          label={t("shadow.intensity")}
+          display={`${value.intensity}%`}
+          value={value.intensity}
+          min={0}
+          max={100}
+          onChange={(intensity) => onChange({ ...value, intensity })}
+        />
       )}
-      <p className="text-xs text-muted-foreground">
+      <PanelHint>
         {t(value.kind === "contact" ? "shadow.hintContact" : value.kind === "soft" ? "shadow.hintSoft" : "shadow.hintNone")}
-      </p>
-    </div>
+      </PanelHint>
+    </PanelSection>
   );
 }

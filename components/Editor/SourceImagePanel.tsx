@@ -5,7 +5,7 @@ import { Replace, Sparkles } from "lucide-react";
 import type { ImageJob } from "@/lib/types";
 import { MAX_UPSCALE_PIXELS, upscaleImage } from "@/hooks/useImageUpscale";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { PanelHint, PanelSection } from "@/components/editor-ui/PanelSection";
 import { useT } from "@/lib/i18n";
 
 interface SourceImagePanelProps {
@@ -69,26 +69,23 @@ export function SourceImagePanel({ job, replaceJobFile }: SourceImagePanelProps)
 
   return (
     <>
-      <div className="flex flex-col gap-1.5">
-        <Button size="sm" variant="outline" className="self-start" onClick={() => fileInputRef.current?.click()}>
-          <Replace />
-          {t("source.replace")}
-        </Button>
-        <p className="text-xs text-muted-foreground">{t("source.replaceHint")}</p>
-        {replaceError && <p className="text-xs text-destructive">{replaceError}</p>}
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChosen} />
-      </div>
-      <Separator />
-      <div className="flex flex-col gap-1.5">
-        <Button size="sm" variant="outline" className="self-start" onClick={handleImproveQuality} disabled={isUpscaling || tooLargeToUpscale}>
+      <PanelSection title={t("source.improveTitle")}>
+        <Button variant="secondary" onClick={handleImproveQuality} disabled={isUpscaling || tooLargeToUpscale}>
           <Sparkles />
           {isUpscaling ? t("source.improving", { percent: Math.round(upscaleProgress * 100) }) : t("source.improve")}
         </Button>
-        <p className="text-xs text-muted-foreground">
-          {t(tooLargeToUpscale ? "source.tooLarge" : "source.improveHint")}
-        </p>
+        <PanelHint>{t(tooLargeToUpscale ? "source.tooLarge" : "source.improveHint")}</PanelHint>
         {upscaleError && <p className="text-xs text-destructive">{upscaleError}</p>}
-      </div>
+      </PanelSection>
+      <PanelSection title={t("source.replace")}>
+        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+          <Replace />
+          {t("source.replace")}
+        </Button>
+        <PanelHint>{t("source.replaceHint")}</PanelHint>
+        {replaceError && <p className="text-xs text-destructive">{replaceError}</p>}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChosen} />
+      </PanelSection>
     </>
   );
 }

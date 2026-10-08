@@ -8,9 +8,9 @@ test("the magic eraser fills a painted object with its surroundings, and can be 
   await page.goto("/");
   // Red disc with a yellow square in the middle, on blue (see helpers.ts).
   await page.locator('input[type="file"]').first().setInputFiles(await makeTestPhoto(page));
-  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeEnabled();
 
-  await page.getByRole("button", { name: "Activar retoque" }).click();
+  await page.getByRole("button", { name: "Retoque", exact: true }).click();
   await page.getByRole("button", { name: "Borrador" }).click();
 
   const canvas = page.locator("main section canvas").first();
