@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // `npm run dev` only accepts its own hostname by default, so opening it
+  // from another device on the Wi-Fi (http://192.168.x.x:3000) loaded the
+  // HTML but blocked the dev scripts: React never hydrated and no button
+  // worked. Allow private LAN addresses and mDNS names (dev-only setting).
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
   // The ONNX Runtime WASM backend needs SharedArrayBuffer to run the model
   // multi-threaded; without cross-origin isolation it silently falls back to
   // single-threaded (slower, no crash). `credentialless` rather than
