@@ -48,11 +48,17 @@ Detén `npm run dev` antes: Playwright reutiliza cualquier servidor en el puerto
 | --- | --- |
 | `app/` | Página principal, layout, manifiesto PWA |
 | `components/Editor/` | Lienzo y paneles del editor |
-| `hooks/` | Cola de procesamiento, cliente del worker de IA, entrada global de imágenes |
+| `components/editor-ui/` | Estructura del editor: barra superior, barra de herramientas, paneles, tira de miniaturas, controles del escenario |
+| `components/ui/` | Componentes base (botones, sliders, popovers, toasts) |
+| `hooks/` | Cola de procesamiento, retoque, borrador mágico, zoom/desplazamiento del lienzo, entrada global de imágenes |
+| `lib/editor/` | Lógica pura del editor (zoom hacia el puntero, ajuste al escenario) |
+| `lib/i18n/` | Textos de la interfaz en español e inglés |
 | `lib/ai/` | Web Worker de IA (quitar fondo, mejorar calidad, selección mágica y borrador), su protocolo y la lógica pura de cada tarea |
 | `lib/image/` | Procesamiento de imagen puro (encuadre, retoque, sombras, exportación) |
 | `lib/storage/` | Persistencia en IndexedDB |
 | `public/sw.js` | Service worker para el modo sin conexión |
+
+¿Buscas en qué ayudar? Revisa la [hoja de ruta](./ROADMAP.md).
 
 ## Modelos y licencias
 

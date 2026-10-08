@@ -21,13 +21,31 @@ Tus fotos **nunca salen de tu equipo**. El modelo de IA se descarga una sola vez
 - **Borrador mágico** (LaMa): pinta sobre algo de la foto —una persona al fondo, un logo, una mancha— y la IA lo borra rellenando el hueco.
 - **Luz y color**: brillo, contraste, saturación y temperatura del sujeto, y un botón para **armonizarlo con el fondo** elegido.
 - **Bordes finos**: suavizar, contraer/expandir y quitar el halo de color del fondo original.
-- **Retoque manual** (borrar/restaurar) con pincel, incluyendo un modo "inteligente" por flood-fill.
+- **Retoque manual** (borrar/restaurar) con pincel, incluyendo un modo "inteligente" por flood-fill. Un círculo bajo el puntero muestra el tamaño real del pincel, que empieza proporcional a la foto.
 - **Mejora de resolución (upscaling) 2x** con Swin2SR en el mismo worker, por mosaicos, sin congelar la interfaz.
+- **Zoom y desplazamiento** del lienzo: Ctrl/⌘ + rueda o pellizco hacia el puntero (hasta 800%), rueda o Espacio + arrastrar para mover, y pellizco con dos dedos en el celular.
 - **Deshacer/rehacer** por imagen.
 - **Descarga en 1 clic** y **exportación en lote (ZIP)** a PNG, JPG o WebP.
 - **Instalable (PWA) y funciona sin conexión** después de la primera visita.
 - **Interfaz en español e inglés**, según el idioma del navegador o con el botón del encabezado.
+- **Interfaz de editor profesional**: tema oscuro (o claro), barra de herramientas (Fondo, Ajustes, Retoque, Tamaño, Imagen), tira de miniaturas y hoja inferior en el celular.
 - Persistencia local (IndexedDB) para no perder el trabajo al recargar.
+
+## Atajos de teclado
+
+| Tecla | Acción |
+| --- | --- |
+| `1` – `5` | Abrir herramienta (Fondo, Ajustes, Retoque, Tamaño, Imagen) |
+| `B` | Activar/desactivar retoque |
+| `[` `]` | Tamaño del pincel |
+| `C` | Comparar antes/después |
+| `D` | Descargar |
+| `Ctrl/⌘ + Shift + C` | Copiar imagen |
+| `Ctrl/⌘ + Z` · `Ctrl/⌘ + Shift + Z` | Deshacer · Rehacer |
+| `Ctrl/⌘ + V` | Pegar una imagen |
+| `Ctrl/⌘ + rueda` · `+` `−` `0` | Acercar/alejar · ajustar a la pantalla |
+| `Espacio + arrastrar` | Mover la vista |
+| `Esc` | Salir de la herramienta |
 
 ## Empezar
 
@@ -45,7 +63,10 @@ npm run build   # build de producción
 npm run start   # sirve el build de producción (incluye el service worker)
 npm run lint    # ESLint
 npm run test    # pruebas (Vitest)
+npm run test:e2e  # pruebas end-to-end (Playwright, sobre el build; detén `npm run dev` antes)
 ```
+
+Lo que sigue está en la [hoja de ruta](./ROADMAP.md).
 
 ## Cómo funciona
 
@@ -77,7 +98,7 @@ Imagen ──► Web Worker (lib/ai/ai.worker.ts)
 
 - [Next.js](https://nextjs.org) (App Router) + React + TypeScript
 - [Transformers.js](https://github.com/huggingface/transformers.js) (ONNX Runtime Web) para quitar fondos y mejorar la calidad
-- Tailwind CSS, Vitest
+- Tailwind CSS, Base UI, Vitest, Playwright
 
 ## Contribuir
 
@@ -111,12 +132,14 @@ Your photos **never leave your device**. The AI model is downloaded once from Hu
 - **Magic eraser** (LaMa): paint over something in the photo — a person in the back, a logo, a stain — and the AI removes it, filling the gap.
 - **Light & color**: brightness, contrast, saturation and temperature of the subject, plus a button to **match it to the chosen background**.
 - **Fine edges**: soften, shrink/grow and remove the old background's color halo.
-- **Manual retouch** (erase/restore) brush with a "smart" flood-fill mode.
+- **Manual retouch** (erase/restore) brush with a "smart" flood-fill mode. A circle under the pointer shows the brush's real size, which starts proportional to the photo.
 - **2x upscaling** with Swin2SR in the same worker, tile by tile, without freezing the UI.
+- **Zoom and pan** the canvas: Ctrl/⌘ + wheel or pinch toward the pointer (up to 800%), wheel or Space + drag to move, two-finger pinch on phones.
 - Per-image **undo/redo**.
 - **One-click download** and **batch ZIP export** as PNG, JPG or WebP.
 - **Installable PWA that works offline** after the first visit.
 - **Spanish and English interface**, following the browser language or the header toggle.
+- **Professional editor UI**: dark (or light) theme, tool rail (Background, Adjust, Retouch, Size, Image), filmstrip, and a bottom sheet on phones.
 - Local persistence (IndexedDB) so a reload never loses your work.
 
 ## Getting started
@@ -128,7 +151,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). See the commands and architecture overview in the Spanish section above.
+Open [http://localhost:3000](http://localhost:3000). See the commands, keyboard shortcuts and architecture overview in the Spanish section above, and what comes next in the [roadmap](./ROADMAP.md).
 
 ## AI models
 
