@@ -2,14 +2,15 @@
 
 import { ImagePlus, LoaderCircle, RotateCcw, TriangleAlert } from "lucide-react";
 import type { ImageJob } from "@/lib/types";
-import { DOWNLOAD_PROGRESS_SHARE } from "@/lib/segmentation/protocol";
+import { DOWNLOAD_PROGRESS_SHARE } from "@/lib/ai/protocol";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 function progressLabel(job: ImageJob): string {
   if (job.status === "pending") return "En espera…";
-  if (job.progress != null && job.progress < DOWNLOAD_PROGRESS_SHARE) {
-    const percent = Math.round((job.progress / DOWNLOAD_PROGRESS_SHARE) * 100);
+  const share = DOWNLOAD_PROGRESS_SHARE.segment;
+  if (job.progress != null && job.progress < share) {
+    const percent = Math.round((job.progress / share) * 100);
     return `Descargando el modelo de IA (solo la primera vez)… ${percent}%`;
   }
   return "Quitando el fondo…";

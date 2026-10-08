@@ -1,40 +1,20 @@
-import Upscaler from "upscaler";
-import x2 from "@upscalerjs/esrgan-medium/2x";
+import { ensureSupportedImageFormat } from "@/lib/image/formatConversion";
+import { runAiTask } from "@/lib/ai/client";
 
 /**
- * Lazily created once and reused across calls: constructing `Upscaler` loads
- * its (bundled, local — no network fetch) ESRGAN model, and that cost
- * shouldn't repeat for every image the user enhances in a session.
- *
- * Explicitly using `esrgan-medium`'s 2x model instead of Upscaler's own
- * default (`esrgan-slim`, ~3x smaller) — the slim model is tuned for speed
- * over quality and its output is barely distinguishable from a plain resize.
+ * Largest photo "Mejorar calidad" accepts (~1000x1000, upscaled to ~2000x2000).
+ * Beyond that a photo already has a good resolution, and since the model
+ * takes ~3 s per 224 px tile, a 12 MP photo would take many minutes.
  */
-let upscalerInstance: InstanceType<typeof Upscaler> | null = null;
-
-function getUpscaler(): InstanceType<typeof Upscaler> {
-  if (!upscalerInstance) upscalerInstance = new Upscaler({ model: x2 });
-  return upscalerInstance;
-}
+export const MAX_UPSCALE_PIXELS = 1_000_000;
 
 /**
- * Runs a 2x AI super-resolution pass (ESRGAN, via UpscalerJS/TensorFlow.js,
- * entirely in-browser) over `file` and returns the result as a PNG blob.
- * Intended to run on the pre-removal original photo — upscaling the already
- * cut-out subject would feed the model transparent-edge pixels it wasn't
- * trained on — with the caller re-running background removal on the result.
+ * Runs a 2x AI super-resolution pass (Swin2SR, in the AI worker, tile by
+ * tile) over `file` and returns the result as a PNG blob. Intended for the
+ * pre-removal original photo — upscaling the already cut-out subject would
+ * feed the model transparent-edge pixels it wasn't trained on — with the
+ * caller re-running background removal on the result.
  */
-export async function upscaleImage(file: File | Blob): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(bitmap, 0, 0);
-  bitmap.close?.();
-
-  const dataUrl = await getUpscaler().upscale(canvas);
-
-  const response = await fetch(dataUrl);
-  return response.blob();
+export async function upscaleImage(file: File | Blob, onProgress?: (ratio: number) => void): Promise<Blob> {
+  return runAiTask("upscale", await ensureSupportedImageFormat(file), onProgress);
 }

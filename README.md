@@ -18,7 +18,7 @@ Tus fotos **nunca salen de tu equipo**. El modelo de IA se descarga una sola vez
 - **Reencuadrar y centrar el sujeto**, con presets (cuadrado, retrato 4:5, historia 9:16) o un tamaño personalizado.
 - **Recorte**, **mover, redimensionar y rotar** el sujeto directamente sobre el lienzo.
 - **Retoque manual** (borrar/restaurar) con pincel, incluyendo un modo "inteligente" por flood-fill.
-- **Mejora de resolución (upscaling)** con ESRGAN en el navegador.
+- **Mejora de resolución (upscaling) 2x** con Swin2SR en el mismo worker, por mosaicos, sin congelar la interfaz.
 - **Deshacer/rehacer** por imagen.
 - **Descarga en 1 clic** y **exportación en lote (ZIP)** a PNG, JPG o WebP.
 - **Instalable (PWA) y funciona sin conexión** después de la primera visita.
@@ -45,7 +45,7 @@ npm run test    # pruebas (Vitest)
 ## Cómo funciona
 
 ```
-Imagen ──► Web Worker (lib/segmentation/segmentation.worker.ts)
+Imagen ──► Web Worker (lib/ai/ai.worker.ts)
               │  Transformers.js + ONNX Runtime Web
               │  WebGPU ─► BiRefNet_lite   (GPUs compatibles)
               │  WebGPU ─► IS-Net          (Apple Silicon)
@@ -54,7 +54,7 @@ Imagen ──► Web Worker (lib/segmentation/segmentation.worker.ts)
          recorte PNG ──► EditorCanvas (fondo, sombra, encuadre, retoque) ──► PNG/JPG/WebP/ZIP
 ```
 
-- `hooks/useBackgroundRemoval.ts`: cliente del worker. Si WebGPU falla en plena inferencia, reemplaza el worker por uno solo-WASM y reintenta.
+- `lib/ai/client.ts`: cliente del worker. Si WebGPU falla en plena inferencia, reemplaza el worker, corre esa tarea en WASM y lo recuerda para la próxima visita.
 - `lib/image/drawSubject.ts`: dibuja sujeto y sombra; lo comparten la vista previa y la exportación para que coincidan píxel a píxel.
 - `public/sw.js`: service worker que guarda la app para usarla sin conexión.
 
@@ -64,12 +64,12 @@ Imagen ──► Web Worker (lib/segmentation/segmentation.worker.ts)
 | --- | --- | --- |
 | [BiRefNet_lite](https://huggingface.co/onnx-community/BiRefNet_lite-ONNX) | MIT | GPUs con WebGPU que soportan el modelo (mejor calidad) |
 | [IS-Net general-use](https://huggingface.co/imgly/isnet-general-onnx) | MIT (pesos originales Apache-2.0) | Apple Silicon y equipos sin WebGPU |
+| [Swin2SR lightweight x2](https://huggingface.co/Xenova/swin2SR-lightweight-x2-64) | Apache-2.0 | "Mejorar calidad" (fotos de hasta ~1 MP) |
 
 ## Stack técnico
 
 - [Next.js](https://nextjs.org) (App Router) + React + TypeScript
-- [Transformers.js](https://github.com/huggingface/transformers.js) (ONNX Runtime Web) para la segmentación
-- [UpscalerJS](https://github.com/upscalerjs/upscaler) + [TensorFlow.js](https://www.tensorflow.org/js) para el escalado
+- [Transformers.js](https://github.com/huggingface/transformers.js) (ONNX Runtime Web) para quitar fondos y mejorar la calidad
 - Tailwind CSS, Vitest
 
 ## Contribuir
@@ -101,7 +101,7 @@ Your photos **never leave your device**. The AI model is downloaded once from Hu
 - **Soft or contact shadows** with adjustable intensity.
 - **Reframe and center** with presets (square, 4:5 portrait, 9:16 story) or a custom size; crop, move, resize and rotate on the canvas.
 - **Manual retouch** (erase/restore) brush with a "smart" flood-fill mode.
-- **Upscaling** with ESRGAN in the browser.
+- **2x upscaling** with Swin2SR in the same worker, tile by tile, without freezing the UI.
 - Per-image **undo/redo**.
 - **One-click download** and **batch ZIP export** as PNG, JPG or WebP.
 - **Installable PWA that works offline** after the first visit.
@@ -124,6 +124,7 @@ Open [http://localhost:3000](http://localhost:3000). See the commands and archit
 | --- | --- | --- |
 | [BiRefNet_lite](https://huggingface.co/onnx-community/BiRefNet_lite-ONNX) | MIT | WebGPU adapters that can run it (best quality) |
 | [IS-Net general-use](https://huggingface.co/imgly/isnet-general-onnx) | MIT (original weights Apache-2.0) | Apple Silicon and devices without WebGPU |
+| [Swin2SR lightweight x2](https://huggingface.co/Xenova/swin2SR-lightweight-x2-64) | Apache-2.0 | "Improve quality" (photos up to ~1 MP) |
 
 ## Contributing
 

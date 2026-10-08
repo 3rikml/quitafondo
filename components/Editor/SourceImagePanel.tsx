@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Replace, Sparkles } from "lucide-react";
 import type { ImageJob } from "@/lib/types";
-import { upscaleImage } from "@/hooks/useImageUpscale";
+import { MAX_UPSCALE_PIXELS, upscaleImage } from "@/hooks/useImageUpscale";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -18,7 +18,24 @@ export function SourceImagePanel({ job, replaceJobFile }: SourceImagePanelProps)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [replaceError, setReplaceError] = useState<string | null>(null);
   const [isUpscaling, setIsUpscaling] = useState(false);
+  const [upscaleProgress, setUpscaleProgress] = useState(0);
   const [upscaleError, setUpscaleError] = useState<string | null>(null);
+  const [originalPixels, setOriginalPixels] = useState<number | null>(null);
+
+  // The photo's size decides whether upscaling makes sense (see MAX_UPSCALE_PIXELS).
+  useEffect(() => {
+    if (!job.originalUrl) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) setOriginalPixels(img.naturalWidth * img.naturalHeight);
+    };
+    img.src = job.originalUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [job.originalUrl]);
+  const tooLargeToUpscale = originalPixels !== null && originalPixels > MAX_UPSCALE_PIXELS;
 
   function handleFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -34,10 +51,11 @@ export function SourceImagePanel({ job, replaceJobFile }: SourceImagePanelProps)
   async function handleImproveQuality() {
     if (!job.originalUrl || isUpscaling) return;
     setUpscaleError(null);
+    setUpscaleProgress(0);
     setIsUpscaling(true);
     try {
       const originalBlob = await fetch(job.originalUrl).then((r) => r.blob());
-      const upscaledBlob = await upscaleImage(originalBlob);
+      const upscaledBlob = await upscaleImage(originalBlob, setUpscaleProgress);
       const upscaledFile = new File([upscaledBlob], job.fileName, { type: upscaledBlob.type });
       setUpscaleError(replaceJobFile(job.id, upscaledFile));
     } catch (error) {
@@ -62,12 +80,14 @@ export function SourceImagePanel({ job, replaceJobFile }: SourceImagePanelProps)
       </div>
       <Separator />
       <div className="flex flex-col gap-1.5">
-        <Button size="sm" variant="outline" className="self-start" onClick={handleImproveQuality} disabled={isUpscaling}>
+        <Button size="sm" variant="outline" className="self-start" onClick={handleImproveQuality} disabled={isUpscaling || tooLargeToUpscale}>
           <Sparkles />
-          {isUpscaling ? "Mejorando…" : "Mejorar calidad (IA)"}
+          {isUpscaling ? `Mejorando… ${Math.round(upscaleProgress * 100)}%` : "Mejorar calidad (IA)"}
         </Button>
         <p className="text-xs text-muted-foreground">
-          Duplica la resolución y afina el detalle con IA, luego vuelve a quitar el fondo. Puede tardar unos segundos.
+          {tooLargeToUpscale
+            ? "Esta foto ya tiene buena resolución; la mejora con IA es para fotos pequeñas (hasta ~1000×1000 px)."
+            : "Duplica la resolución y afina el detalle con IA, luego vuelve a quitar el fondo. Puede tardar unos segundos."}
         </p>
         {upscaleError && <p className="text-xs text-destructive">{upscaleError}</p>}
       </div>

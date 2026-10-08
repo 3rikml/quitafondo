@@ -41,7 +41,7 @@ Las tres deben pasar; la CI de GitHub corre lo mismo en cada PR.
 | `app/` | Página principal, layout, manifiesto PWA |
 | `components/Editor/` | Lienzo y paneles del editor |
 | `hooks/` | Cola de procesamiento, cliente del worker de IA, entrada global de imágenes |
-| `lib/segmentation/` | Web Worker y protocolo del modelo de segmentación |
+| `lib/ai/` | Web Worker de IA (quitar fondo y mejorar calidad), su protocolo y el procesado por mosaicos |
 | `lib/image/` | Procesamiento de imagen puro (encuadre, retoque, sombras, exportación) |
 | `lib/storage/` | Persistencia en IndexedDB |
 | `public/sw.js` | Service worker para el modo sin conexión |
