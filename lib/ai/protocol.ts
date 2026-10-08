@@ -2,17 +2,40 @@
 
 export type AiDevice = "webgpu" | "wasm";
 
-/** "segment": remove the background (PNG with alpha). "upscale": 2x super-resolution (PNG). */
-export type AiTask = "segment" | "upscale";
+/**
+ * "segment": remove the background (PNG with alpha). "upscale": 2x
+ * super-resolution (PNG). "sam": object mask from clicked points.
+ */
+export type AiTask = "segment" | "upscale" | "sam";
+
+/** A click for the magic selection, in source-image pixels. */
+export interface MagicPoint {
+  x: number;
+  y: number;
+  /** true: "this is part of the object"; false: "this is not". */
+  positive: boolean;
+}
 
 export type WorkerRequest =
   /** Sent before any job to run `task` on WASM only (see `gpu-failed`). */
   | { type: "force-wasm"; task: AiTask }
-  | { type: "run"; task: AiTask; id: number; image: Blob };
+  | { type: "run"; task: "segment" | "upscale"; id: number; image: Blob }
+  /**
+   * Magic selection. The worker keeps the SAM image embedding of the last
+   * `key` (the slow part), so only the first click on an image pays for it;
+   * `points: null` just computes that embedding ahead of the first click.
+   */
+  | { type: "sam"; id: number; key: string; image: Blob; points: MagicPoint[] | null };
 
 export type WorkerResponse =
   | { id: number; type: "progress"; ratio: number }
   | { id: number; type: "done"; result: Blob }
+  /**
+   * Answer to a `sam` request: candidate masks (255 inside the object, 0
+   * outside) from smallest to largest, and the most confident one's index.
+   * Empty when only embedding.
+   */
+  | { id: number; type: "mask"; masks: Uint8Array[]; best: number; width: number; height: number }
   | { id: number; type: "error"; message: string }
   /**
    * WebGPU built the session but failed while running it. Once that happens
@@ -61,6 +84,16 @@ export const UPSCALE_MODELS: Record<AiDevice, AiModel> = {
 };
 
 /**
+ * Magic selection: SlimSAM (Apache-2.0), a pruned Segment Anything at ~1% of
+ * SAM's size: ~23 MB vision encoder + ~17 MB prompt decoder in fp32 on WebGPU,
+ * ~9 + ~5 MB 8-bit quantized on the CPU.
+ */
+export const SAM_MODELS: Record<AiDevice, AiModel> = {
+  webgpu: { id: "Xenova/slimsam-77-uniform", dtype: "fp32" },
+  wasm: { id: "Xenova/slimsam-77-uniform", dtype: "q8" },
+};
+
+/**
  * BiRefNet's largest WebGPU shader binds 11 storage buffers. Adapters below
  * that (every Apple Silicon Mac reports 10) can never run it.
  */
@@ -74,4 +107,5 @@ export const MIN_STORAGE_BUFFERS_PER_SHADER_STAGE = 11;
 export const DOWNLOAD_PROGRESS_SHARE: Record<AiTask, number> = {
   segment: 0.9,
   upscale: 0.3,
+  sam: 0.8,
 };

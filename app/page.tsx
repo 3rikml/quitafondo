@@ -11,6 +11,8 @@ import { useRetouch } from "@/hooks/useRetouch";
 import { useEditorHistory, type HistoryEntry } from "@/hooks/useEditorHistory";
 import { useCropTool } from "@/hooks/useCropTool";
 import { useSubjectTransform } from "@/hooks/useSubjectTransform";
+import { magicStatusText, useMagicSelect } from "@/hooks/useMagicSelect";
+import { canvasToSourceCoords } from "@/components/Editor/RetouchToolbar";
 import { ImageDropzone } from "@/components/ImageDropzone";
 import { BatchQueue } from "@/components/BatchQueue";
 import { AppHeader, DropHint, SidePanel, UnsupportedBrowserBanner } from "@/components/Layout";
@@ -48,6 +50,23 @@ export default function Home() {
   const editorDeps = { selectedJob, updateJob, canvasHandleRef, canvasWrapperRef, canvasRenderTick, history };
   const crop = useCropTool(editorDeps);
   const subject = useSubjectTransform(editorDeps);
+  const magic = useMagicSelect({
+    selectedJob,
+    active: retouch.active && retouch.tool === "magic",
+    overridesByJobIdRef: retouch.overridesByJobIdRef,
+    history,
+    onOverridesChanged: retouch.scheduleRedraw,
+  });
+
+  // Undo/redo change the mask under a pending magic-selection size choice, so drop it.
+  function undo() {
+    magic.forget();
+    history.undo();
+  }
+  function redo() {
+    magic.forget();
+    history.redo();
+  }
 
   // Comparison belongs to the image it was opened on ("adjust state during render").
   const [lastSelectedJobId, setLastSelectedJobId] = useState(selectedJobId);
@@ -121,7 +140,16 @@ export default function Home() {
   function handleCanvasPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (crop.active || !selectedJob) return;
     const canvas = e.currentTarget.querySelector("canvas");
+    if (retouch.active && retouch.tool === "magic") {
+      const fit = canvasHandleRef.current?.getFit();
+      if (!canvas || !fit) return;
+      const { x, y } = canvasToSourceCoords(canvas, fit, e.clientX, e.clientY);
+      // Alt/Option flips the action, so both are one click away.
+      magic.selectAt(x, y, magic.add !== e.altKey);
+      return;
+    }
     if (retouch.active) {
+      magic.forget(); // a size change after this stroke would overwrite it
       strokeStartRef.current = history.snapshot(selectedJob);
       if (canvas) retouch.paintAt(canvas, e.clientX, e.clientY);
       return;
@@ -168,8 +196,8 @@ export default function Home() {
       }
       if (modifier && key === "z") {
         e.preventDefault();
-        if (e.shiftKey) history.redo();
-        else history.undo();
+        if (e.shiftKey) redo();
+        else undo();
         return;
       }
 
@@ -287,7 +315,7 @@ export default function Home() {
                 onPointerLeave={handleCanvasPointerUp}
                 className={cn(
                   "flex h-full w-full items-center justify-center",
-                  retouch.active ? "cursor-crosshair" : "cursor-move"
+                  !retouch.active ? "cursor-move" : retouch.tool === "magic" ? "cursor-pointer" : "cursor-crosshair"
                 )}
                 style={{ transform: `scale(${zoom})` }}
               >
@@ -339,8 +367,17 @@ export default function Home() {
               onBackgroundChange={handleBackgroundChange}
               onApplyToAll={applyToAll}
               crop={crop}
-              history={history}
-              retouch={retouch.toolbarProps}
+              history={{ ...history, undo, redo }}
+              retouch={{
+                ...retouch.toolbarProps,
+                magic: {
+                  add: magic.add,
+                  onAddChange: magic.setAdd,
+                  statusText: magicStatusText(magic.status),
+                  sizes: magic.sizes,
+                  onSizeChange: magic.chooseSize,
+                },
+              }}
               getRenderedPixelBuffer={() => canvasHandleRef.current?.getRenderedPixelBuffer() ?? null}
             />
           ) : (

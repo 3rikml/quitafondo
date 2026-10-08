@@ -8,6 +8,7 @@ import {
   paintBrushStroke,
   paintSmartBrushStroke,
   type RetouchMode,
+  type RetouchTool,
 } from "@/components/Editor/RetouchToolbar";
 import type { EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
 
@@ -19,6 +20,7 @@ import type { EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
 export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObject<EditorCanvasHandle | null>) {
   const [active, setActive] = useState(false);
   const [mode, setMode] = useState<RetouchMode>("erase");
+  const [tool, setTool] = useState<RetouchTool>("brush");
   const [brushSize, setBrushSize] = useState(24);
   const [hardness, setHardness] = useState(1);
   const [smart, setSmart] = useState(false);
@@ -86,6 +88,7 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
   return {
     active,
     setActive,
+    tool,
     version,
     overridesByJobIdRef,
     getOverrideBuffer,
@@ -105,6 +108,8 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
       onSmartChange: setSmart,
       tolerance,
       onToleranceChange: setTolerance,
+      tool,
+      onToolChange: setTool,
     },
   };
 }

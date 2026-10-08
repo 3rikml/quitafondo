@@ -1,6 +1,6 @@
 "use client";
 
-import { Eraser, PaintbrushVertical, Wand2 } from "lucide-react";
+import { Eraser, MousePointerClick, PaintbrushVertical, Sparkles, Wand2 } from "lucide-react";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 import { canvasPointToSource, type FitResult } from "@/lib/image/canvasFit";
 
@@ -10,6 +10,8 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 
 export type RetouchMode = "erase" | "restore";
+/** "brush": paint erase/restore strokes. "magic": click an object to remove or add it back. */
+export type RetouchTool = "brush" | "magic";
 
 export interface RetouchToolbarProps {
   active: boolean;
@@ -30,6 +32,17 @@ export interface RetouchToolbarProps {
    * seed pixel and still be included in the flood fill. */
   tolerance: number;
   onToleranceChange: (tolerance: number) => void;
+  tool: RetouchTool;
+  onToolChange: (tool: RetouchTool) => void;
+  /** Magic selection: whether a click adds the object back (vs. removing it), and its status line. */
+  magic: {
+    add: boolean;
+    onAddChange: (add: boolean) => void;
+    statusText: string | null;
+    /** Candidate sizes for the last click (smallest first), when there is a choice. */
+    sizes: { count: number; index: number } | null;
+    onSizeChange: (index: number) => void;
+  };
 }
 
 export function RetouchToolbar({
@@ -45,7 +58,14 @@ export function RetouchToolbar({
   onSmartChange,
   tolerance,
   onToleranceChange,
+  tool,
+  onToolChange,
+  magic,
 }: RetouchToolbarProps) {
+  const selectBrush = (brushMode: RetouchMode) => {
+    onToolChange("brush");
+    onModeChange(brushMode);
+  };
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -56,93 +76,142 @@ export function RetouchToolbar({
           onClick={() => onActiveChange(!active)}
         >
           <Wand2 className="size-4" />
-          {active ? "Desactivar" : "Activar pincel"}
+          {active ? "Desactivar" : "Activar retoque"}
         </Button>
       </div>
 
       {active && (
         <>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             <Button
               size="sm"
-              variant={mode === "erase" ? "default" : "outline"}
-              onClick={() => onModeChange("erase")}
-              className="flex-1"
+              variant={tool === "brush" && mode === "erase" ? "default" : "outline"}
+              onClick={() => selectBrush("erase")}
             >
               <Eraser className="size-4" />
               Borrar
             </Button>
             <Button
               size="sm"
-              variant={mode === "restore" ? "default" : "outline"}
-              onClick={() => onModeChange("restore")}
-              className="flex-1"
+              variant={tool === "brush" && mode === "restore" ? "default" : "outline"}
+              onClick={() => selectBrush("restore")}
             >
               <PaintbrushVertical className="size-4" />
               Restaurar
             </Button>
+            <Button size="sm" variant={tool === "magic" ? "default" : "outline"} onClick={() => onToolChange("magic")}>
+              <Sparkles className="size-4" />
+              Mágica
+            </Button>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">
-              Tamaño de pincel ({brushSize}px)
-            </span>
-            <Slider
-              min={4}
-              max={120}
-              step={1}
-              value={[brushSize]}
-              onValueChange={(values) => {
-                const size = Array.isArray(values) ? values[0] : values;
-                onBrushSizeChange(size);
-              }}
-            />
-          </div>
-
-          {!smart && (
-            <div className="flex flex-col gap-1">
-              <span className="text-xs text-muted-foreground">
-                Dureza del pincel ({Math.round(hardness * 100)}%)
-              </span>
-              <Slider
-                min={0}
-                max={100}
-                step={1}
-                value={[Math.round(hardness * 100)]}
-                onValueChange={(values) => {
-                  const percent = Array.isArray(values) ? values[0] : values;
-                  onHardnessChange(percent / 100);
-                }}
-              />
+          {tool === "magic" && (
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
+                <Button size="sm" variant={!magic.add ? "secondary" : "ghost"} onClick={() => magic.onAddChange(false)}>
+                  Quitar objeto
+                </Button>
+                <Button size="sm" variant={magic.add ? "secondary" : "ghost"} onClick={() => magic.onAddChange(true)}>
+                  Agregar objeto
+                </Button>
+              </div>
+              <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                <MousePointerClick className="mt-0.5 size-3.5 shrink-0" />
+                Haz clic en un objeto para {magic.add ? "agregarlo al" : "quitarlo del"} recorte. Mantén Alt/⌥ para hacer
+                lo contrario.
+              </p>
+              {magic.sizes && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">Tamaño de la selección</span>
+                  <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${magic.sizes.count}, 1fr)` }}>
+                    {(magic.sizes.count === 2 ? ["Pequeña", "Grande"] : ["Pequeña", "Mediana", "Grande"]).map(
+                      (label, index) => (
+                        <Button
+                          key={label}
+                          size="sm"
+                          variant={magic.sizes?.index === index ? "secondary" : "outline"}
+                          aria-pressed={magic.sizes?.index === index}
+                          onClick={() => magic.onSizeChange(index)}
+                        >
+                          {label}
+                        </Button>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+              {magic.statusText && (
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  {magic.statusText}
+                </p>
+              )}
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <Label htmlFor="smart-retouch" className="text-xs text-muted-foreground">
-              Detección automática de bordes
-            </Label>
-            <Switch
-              id="smart-retouch"
-              checked={smart}
-              onCheckedChange={onSmartChange}
-            />
-          </div>
-          {smart && (
+          {tool === "brush" && (
+            <>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">
-                Sensibilidad ({tolerance}%)
+                Tamaño de pincel ({brushSize}px)
               </span>
               <Slider
-                min={1}
-                max={100}
+                min={4}
+                max={120}
                 step={1}
-                value={[tolerance]}
+                value={[brushSize]}
                 onValueChange={(values) => {
-                  const t = Array.isArray(values) ? values[0] : values;
-                  onToleranceChange(t);
+                  const size = Array.isArray(values) ? values[0] : values;
+                  onBrushSizeChange(size);
                 }}
               />
             </div>
+
+            {!smart && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">
+                  Dureza del pincel ({Math.round(hardness * 100)}%)
+                </span>
+                <Slider
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={[Math.round(hardness * 100)]}
+                  onValueChange={(values) => {
+                    const percent = Array.isArray(values) ? values[0] : values;
+                    onHardnessChange(percent / 100);
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="smart-retouch" className="text-xs text-muted-foreground">
+                Detección automática de bordes
+              </Label>
+              <Switch
+                id="smart-retouch"
+                checked={smart}
+                onCheckedChange={onSmartChange}
+              />
+            </div>
+            {smart && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">
+                  Sensibilidad ({tolerance}%)
+                </span>
+                <Slider
+                  min={1}
+                  max={100}
+                  step={1}
+                  value={[tolerance]}
+                  onValueChange={(values) => {
+                    const t = Array.isArray(values) ? values[0] : values;
+                    onToleranceChange(t);
+                  }}
+                />
+              </div>
+            )}
+            </>
           )}
         </>
       )}

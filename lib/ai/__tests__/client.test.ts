@@ -18,10 +18,15 @@ class FakeWorker {
       this.wasmOnly.add(request.task);
       return;
     }
-    const { id, image, task } = request;
+    const { id, image } = request;
+    const task = request.type === "sam" ? "sam" : request.task;
     queueMicrotask(async () => {
       const content = await image.text();
-      if (content === "broken") {
+      if (request.type === "sam") {
+        // A 2x1 image with one candidate covering the first pixel; none when only preparing.
+        const masks = request.points ? [Uint8Array.from([255, 0])] : [];
+        this.reply({ id, type: "mask", masks, best: 0, width: 2, height: 1 });
+      } else if (content === "broken") {
         this.reply({ id, type: "error", message: "boom" });
       } else if (content === "gpu-only-failure" && !this.wasmOnly.has(task)) {
         this.reply({ id, type: "gpu-failed" });
@@ -45,7 +50,7 @@ beforeAll(() => {
   vi.stubGlobal("Worker", FakeWorker);
 });
 
-import { runAiTask } from "../client";
+import { runAiTask, runMagicSelect } from "../client";
 
 describe("runAiTask", () => {
   it("resolves with the result the worker returns for each task", async () => {
@@ -76,5 +81,13 @@ describe("runAiTask", () => {
     const replacement = FakeWorker.instances[before];
     expect(replacement.wasmOnly.has("upscale")).toBe(true);
     expect(replacement.wasmOnly.has("segment")).toBe(false);
+  });
+
+  it("returns the magic-selection masks, or none when only preparing the image", async () => {
+    const image = new Blob(["photo"], { type: "image/png" });
+    expect((await runMagicSelect("k", image, null)).masks).toEqual([]);
+    const { masks, width, height } = await runMagicSelect("k", image, [{ x: 0, y: 0, positive: true }]);
+    expect(Array.from(masks[0])).toEqual([255, 0]);
+    expect([width, height]).toEqual([2, 1]);
   });
 });

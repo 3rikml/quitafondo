@@ -1,14 +1,18 @@
-import type { AiTask, WorkerRequest, WorkerResponse } from "./protocol";
+import type { AiTask, MagicPoint, WorkerRequest, WorkerResponse } from "./protocol";
+
+type JobRequest = Exclude<WorkerRequest, { type: "force-wasm" }>;
 
 interface PendingRequest {
-  task: AiTask;
-  image: Blob;
-  resolve: (result: Blob) => void;
+  /** Kept to replay the job on a fresh worker after a WebGPU failure. */
+  message: JobRequest;
+  resolve: (result: Extract<WorkerResponse, { type: "done" | "mask" }>) => void;
   reject: (error: Error) => void;
   onProgress?: (ratio: number) => void;
 }
 
-const TASKS: AiTask[] = ["segment", "upscale"];
+const TASKS: AiTask[] = ["segment", "upscale", "sam"];
+
+const taskOf = (message: JobRequest): AiTask => (message.type === "sam" ? "sam" : message.task);
 
 /**
  * Remembers, per task, a GPU that failed mid-inference, so later visits skip
@@ -59,31 +63,28 @@ function getWorker(): Worker {
   for (const task of wasmOnlyTasks) send(created, { type: "force-wasm", task });
   created.onmessage = (event: MessageEvent<WorkerResponse>) => {
     const message = event.data;
+    const request = pending.get(message.id);
     if (message.type === "gpu-failed") {
-      // The old worker is unusable; every request it still held (this one
+      // The old worker is unusable; every job it still held (this one
       // included) is replayed on a fresh worker that runs this task on WASM.
-      const failedTask = pending.get(message.id)?.task;
-      if (failedTask) rememberWebGpuBroken(failedTask);
+      if (request) rememberWebGpuBroken(taskOf(request.message));
       discardWorker();
       const replacement = getWorker();
-      for (const [id, request] of pending) {
-        send(replacement, { type: "run", task: request.task, id, image: request.image });
-      }
+      for (const { message: job } of pending.values()) send(replacement, job);
       return;
     }
-    const request = pending.get(message.id);
     if (!request) return;
     if (message.type === "progress") {
       request.onProgress?.(message.ratio);
       return;
     }
     pending.delete(message.id);
-    if (message.type === "done") {
-      request.onProgress?.(1);
-      request.resolve(message.result);
-    } else {
+    if (message.type === "error") {
       request.reject(new Error(message.message));
+      return;
     }
+    request.onProgress?.(1);
+    request.resolve(message);
   };
   created.onerror = (event) => {
     const error = new Error(event.message || "El proceso de IA falló.");
@@ -95,11 +96,41 @@ function getWorker(): Worker {
   return created;
 }
 
-/** Runs one AI task in the shared worker; `onProgress` receives 0-1. */
-export function runAiTask(task: AiTask, image: Blob, onProgress?: (ratio: number) => void): Promise<Blob> {
-  return new Promise<Blob>((resolve, reject) => {
-    const id = nextId++;
-    pending.set(id, { task, image, resolve, reject, onProgress });
-    send(getWorker(), { type: "run", task, id, image });
+function submit(
+  build: (id: number) => JobRequest,
+  onProgress?: (ratio: number) => void
+): Promise<Extract<WorkerResponse, { type: "done" | "mask" }>> {
+  return new Promise((resolve, reject) => {
+    const message = build(nextId++);
+    pending.set(message.id, { message, resolve, reject, onProgress });
+    send(getWorker(), message);
   });
+}
+
+/** Removes the background ("segment") or upscales 2x ("upscale") in the AI worker; resolves with a PNG. */
+export async function runAiTask(
+  task: "segment" | "upscale",
+  image: Blob,
+  onProgress?: (ratio: number) => void
+): Promise<Blob> {
+  const response = await submit((id) => ({ type: "run", task, id, image }), onProgress);
+  if (response.type !== "done") throw new Error("Respuesta inesperada del proceso de IA.");
+  return response.result;
+}
+
+/**
+ * Magic selection: candidate object masks (0/255 per pixel, at the image's
+ * size, smallest to largest) for the clicked points, plus the most confident
+ * one's index. With `points: null` it only prepares the image (the slow,
+ * once-per-image step) and resolves with no masks.
+ */
+export async function runMagicSelect(
+  key: string,
+  image: Blob,
+  points: MagicPoint[] | null,
+  onProgress?: (ratio: number) => void
+): Promise<{ masks: Uint8Array[]; best: number; width: number; height: number }> {
+  const response = await submit((id) => ({ type: "sam", id, key, image, points }), onProgress);
+  if (response.type !== "mask") throw new Error("Respuesta inesperada del proceso de IA.");
+  return { masks: response.masks, best: response.best, width: response.width, height: response.height };
 }
