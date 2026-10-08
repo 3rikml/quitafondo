@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import type { ImageJob } from "@/lib/types";
 import { DEFAULT_BACKGROUND, DEFAULT_CANVAS, DEFAULT_EXPORT } from "@/lib/types";
 import { removeImageBackground } from "@/hooks/useBackgroundRemoval";
+import { downscaleIfHuge } from "@/lib/image/downscale";
 import { isBackgroundRemovalSupported, validateImageFile } from "@/lib/image/fileValidation";
 import { toPersistedJob, fromPersistedJob } from "@/lib/storage/schema";
 import { saveJob, loadAllJobs, deleteJob as deletePersistedJob } from "@/lib/storage/db";
@@ -106,7 +107,29 @@ export function useBatchQueue() {
 
       updateJob(id, { status: "processing", progress: undefined });
 
-      removeImageBackground(file, (ratio) => updateJob(id, { progress: ratio }))
+      // Reduce huge photos first, and use the reduced copy as the job's
+      // original too: retouch color repair and edge cleanup need the original
+      // and the cutout to have identical dimensions.
+      downscaleIfHuge(file)
+        .then((reduced) => {
+          if (!reduced) return file;
+          filesById.current.set(id, reduced.blob);
+          const originalUrl = URL.createObjectURL(reduced.blob);
+          setJobs((prev) =>
+            prev.map((job) => {
+              if (job.id !== id) return job;
+              // Revoking twice (StrictMode re-runs updaters) is harmless.
+              if (job.originalUrl && job.originalUrl !== originalUrl) URL.revokeObjectURL(job.originalUrl);
+              return {
+                ...job,
+                originalUrl,
+                notice: `Reducida a ${reduced.width}×${reduced.height} px para procesarla en el navegador`,
+              };
+            })
+          );
+          return reduced.blob;
+        })
+        .then((input) => removeImageBackground(input, (ratio) => updateJob(id, { progress: ratio })))
         .then((cutoutBlob) => {
           updateJob(id, { status: "done", cutoutBlob, progress: undefined });
         })

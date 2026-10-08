@@ -82,6 +82,8 @@ export interface ImageJob {
   errorMessage?: string;
   /** 0-1, only meaningful while status === "processing". */
   progress?: number;
+  /** Informational note shown under the file name (e.g. it was reduced to fit). */
+  notice?: string;
   background: BackgroundConfig;
   canvas: CanvasConfig;
   exportConfig: ExportConfig;

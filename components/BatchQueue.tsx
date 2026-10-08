@@ -149,6 +149,7 @@ export function BatchQueue({
                     <Progress value={job.progress != null ? job.progress * 100 : null} className="mt-1 h-1" />
                   )}
                   {job.status === "error" && <p className="text-xs text-destructive">{job.errorMessage}</p>}
+                  {job.notice && <p className="text-xs text-muted-foreground">{job.notice}</p>}
                 </div>
               </button>
               <div className="ml-2 flex gap-1.5">

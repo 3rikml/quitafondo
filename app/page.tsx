@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BackgroundConfig, ImageJob } from "@/lib/types";
 import { loadSelectedJobId, saveSelectedJobId } from "@/lib/storage/db";
-import { downloadRenderedImage } from "@/lib/image/downloadImage";
+import { copyRenderedImage, downloadRenderedImage } from "@/lib/image/downloadImage";
 import { cn } from "@/lib/utils";
 import { useBatchQueue } from "@/hooks/useBatchQueue";
 import { useGlobalImageInput } from "@/hooks/useGlobalImageInput";
@@ -15,7 +15,7 @@ import { ImageDropzone } from "@/components/ImageDropzone";
 import { BatchQueue } from "@/components/BatchQueue";
 import { AppHeader, DropHint, SidePanel, UnsupportedBrowserBanner } from "@/components/Layout";
 import { EditorCanvas, type EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
-import { CanvasToolbar } from "@/components/Editor/CanvasToolbar";
+import { CanvasToolbar, type CopyState } from "@/components/Editor/CanvasToolbar";
 import { CompareOverlay, CropOverlay, SubjectHandles } from "@/components/Editor/CanvasOverlays";
 import { EmptyCanvasView, ProcessingView } from "@/components/Editor/ProcessingView";
 import { EditorSidebar, EditorSidebarEmpty } from "@/components/Editor/EditorSidebar";
@@ -29,6 +29,8 @@ export default function Home() {
   // Before/after comparison: null while off, otherwise the 0-1 divider position.
   const [compareSplit, setCompareSplit] = useState<number | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const copyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Below `lg` the two side columns are slide-over drawers.
   const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
   const [mobileRightOpen, setMobileRightOpen] = useState(false);
@@ -94,6 +96,27 @@ export default function Home() {
     }
   }
 
+  async function handleCopy() {
+    const pixels = canvasHandleRef.current?.getRenderedPixelBuffer();
+    if (!pixels) return;
+    setCopyState("copying");
+    try {
+      await copyRenderedImage(pixels);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+    if (copyResetRef.current) clearTimeout(copyResetRef.current);
+    copyResetRef.current = setTimeout(() => setCopyState("idle"), 2000);
+  }
+
+  useEffect(
+    () => () => {
+      if (copyResetRef.current) clearTimeout(copyResetRef.current);
+    },
+    []
+  );
+
   // Canvas gestures: a brush stroke while retouching, otherwise dragging the subject.
   function handleCanvasPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (crop.active || !selectedJob) return;
@@ -123,12 +146,14 @@ export default function Home() {
     subject.endDrag();
   }
 
-  // Keyboard: Enter/Escape for the crop tool, Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z
-  // for undo/redo, Escape to close a mobile drawer.
+  // Keyboard shortcuts (listed in CanvasToolbar's help popover). Ignored
+  // while typing in a field; single-letter ones only act on a finished image.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      const key = e.key.toLowerCase();
+      const modifier = e.ctrlKey || e.metaKey;
 
       if (e.key === "Escape" && (mobileLeftOpen || mobileRightOpen)) {
         setMobileLeftOpen(false);
@@ -141,10 +166,33 @@ export default function Home() {
         else crop.cancel();
         return;
       }
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return;
+      if (modifier && key === "z") {
+        e.preventDefault();
+        if (e.shiftKey) history.redo();
+        else history.undo();
+        return;
+      }
+
+      const editing = selectedJob?.status === "done";
+      if (!editing) return;
+      if (modifier && e.shiftKey && key === "c") {
+        e.preventDefault();
+        handleCopy();
+        return;
+      }
+      if (modifier || e.altKey) return;
+      const brush = retouch.toolbarProps;
+      if (key === "d") handleQuickDownload();
+      else if (key === "c" && selectedJob.originalUrl) setCompareSplit((split) => (split === null ? 0.5 : null));
+      else if (key === "b") retouch.setActive(!retouch.active);
+      else if (e.key === "[" && retouch.active) brush.onBrushSizeChange(Math.max(4, brush.brushSize - 4));
+      else if (e.key === "]" && retouch.active) brush.onBrushSizeChange(Math.min(120, brush.brushSize + 4));
+      else if (e.key === "Escape") {
+        if (compareSplit !== null) setCompareSplit(null);
+        else if (retouch.active) retouch.setActive(false);
+        else return;
+      } else return;
       e.preventDefault();
-      if (e.shiftKey) history.redo();
-      else history.undo();
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -224,6 +272,8 @@ export default function Home() {
                 formatLabel={selectedJob.exportConfig.format.toUpperCase()}
                 isDownloading={isDownloading}
                 onDownload={handleQuickDownload}
+                copyState={copyState}
+                onCopy={handleCopy}
                 isComparing={compareSplit !== null}
                 canCompare={Boolean(selectedJob.originalUrl)}
                 onToggleCompare={() => setCompareSplit((split) => (split === null ? 0.5 : null))}
