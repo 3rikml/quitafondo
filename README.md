@@ -24,6 +24,7 @@ Tus fotos **nunca salen de tu equipo**. El modelo de IA se descarga una sola vez
 - **Deshacer/rehacer** por imagen.
 - **Descarga en 1 clic** y **exportación en lote (ZIP)** a PNG, JPG o WebP.
 - **Instalable (PWA) y funciona sin conexión** después de la primera visita.
+- **Interfaz en español e inglés**, según el idioma del navegador o con el botón del encabezado.
 - Persistencia local (IndexedDB) para no perder el trabajo al recargar.
 
 ## Empezar
@@ -110,6 +111,7 @@ Your photos **never leave your device**. The AI model is downloaded once from Hu
 - Per-image **undo/redo**.
 - **One-click download** and **batch ZIP export** as PNG, JPG or WebP.
 - **Installable PWA that works offline** after the first visit.
+- **Spanish and English interface**, following the browser language or the header toggle.
 - Local persistence (IndexedDB) so a reload never loses your work.
 
 ## Getting started

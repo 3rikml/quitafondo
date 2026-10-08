@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/IconButton";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { useT, type MessageKey } from "@/lib/i18n";
 
 interface BatchQueueProps {
   jobs: ImageJob[];
@@ -22,11 +23,11 @@ interface BatchQueueProps {
   getRetouchOverride: (jobId: string) => Int16Array | undefined;
 }
 
-const STATUS_LABEL: Record<ImageJob["status"], string> = {
-  pending: "En espera",
-  processing: "Procesando…",
-  done: "Listo",
-  error: "Error",
+const STATUS_LABEL: Record<ImageJob["status"], MessageKey> = {
+  pending: "queue.status.pending",
+  processing: "queue.status.processing",
+  done: "queue.status.done",
+  error: "queue.status.error",
 };
 
 const STATUS_ICON: Record<ImageJob["status"], typeof Clock> = {
@@ -51,6 +52,7 @@ export function BatchQueue({
   onRemoveJob,
   getRetouchOverride,
 }: BatchQueueProps) {
+  const t = useT();
   const [isZipping, setIsZipping] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
   const doneJobs = jobs.filter((job) => job.status === "done" && job.cutoutBlob);
@@ -81,7 +83,7 @@ export function BatchQueue({
       const failedCount = results.length - entries.length;
 
       if (entries.length === 0) {
-        setZipError("No se pudo generar el ZIP: ninguna imagen se pudo procesar.");
+        setZipError(t("queue.zipNoneProcessed"));
         return;
       }
 
@@ -94,12 +96,10 @@ export function BatchQueue({
       URL.revokeObjectURL(url);
 
       if (failedCount > 0) {
-        setZipError(
-          `${failedCount} de ${results.length} imagen(es) no se pudieron incluir en el ZIP.`
-        );
+        setZipError(t("queue.zipPartial", { failed: failedCount, total: results.length }));
       }
     } catch {
-      setZipError("No se pudo generar el ZIP. Intenta de nuevo.");
+      setZipError(t("queue.zipFailed"));
     } finally {
       setIsZipping(false);
     }
@@ -108,10 +108,10 @@ export function BatchQueue({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-heading text-sm font-semibold text-muted-foreground">Imágenes ({jobs.length})</h2>
+        <h2 className="font-heading text-sm font-semibold text-muted-foreground">{t("queue.title", { count: jobs.length })}</h2>
         <Button size="sm" variant="secondary" disabled={doneJobs.length < 2 || isZipping} onClick={handleDownloadAll}>
           <PackageOpen />
-          {isZipping ? "Empaquetando…" : "Descargar todo"}
+          {isZipping ? t("queue.zipping") : t("queue.downloadAll")}
         </Button>
       </div>
       {zipError && <p className="text-xs text-destructive">{zipError}</p>}
@@ -143,7 +143,7 @@ export function BatchQueue({
                   <p className="truncate text-sm font-medium">{job.fileName}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <StatusIcon className={cn("size-3.5", STATUS_ICON_CLASS[job.status])} strokeWidth={2} />
-                    <span>{STATUS_LABEL[job.status]}</span>
+                    <span>{t(STATUS_LABEL[job.status])}</span>
                   </div>
                   {job.status === "processing" && (
                     <Progress value={job.progress != null ? job.progress * 100 : null} className="mt-1 h-1" />
@@ -156,11 +156,11 @@ export function BatchQueue({
                 {job.status === "error" && (
                   <Button size="sm" variant="outline" onClick={() => onRetryJob(job.id)}>
                     <RotateCcw />
-                    Reintentar
+                    {t("queue.retry")}
                   </Button>
                 )}
                 <IconButton
-                  label={`Quitar ${job.fileName} de la lista`}
+                  label={t("queue.remove", { name: job.fileName })}
                   size="sm"
                   className="text-muted-foreground hover:text-destructive"
                   onClick={() => onRemoveJob(job.id)}

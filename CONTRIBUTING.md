@@ -38,7 +38,7 @@ npm run build && npm run test:e2e
 - Añade o actualiza pruebas en `__tests__/` junto al código que cambies, sobre todo en `lib/` (lógica pura, fácil de probar).
 - Si tocas el lienzo o la exportación, revisa que la vista previa y la descarga sigan coincidiendo (ambas usan `lib/image/drawSubject.ts`).
 - Si cambias la UI, incluye una captura en el PR y pruébala también a ancho de móvil.
-- Los textos de la interfaz están en español.
+- Los textos de la interfaz viven en `lib/i18n/es.ts` y `lib/i18n/en.ts`: agrega cada texto nuevo en ambos (TypeScript avisa si falta una traducción) y úsalo con `const t = useT()`.
 
 ## Estructura
 

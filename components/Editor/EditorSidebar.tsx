@@ -13,6 +13,7 @@ import { ExportPanel } from "@/components/Editor/ExportPanel";
 import { RetouchToolbar, type RetouchToolbarProps } from "@/components/Editor/RetouchToolbar";
 import { ShadowPanel } from "@/components/Editor/ShadowPanel";
 import { SourceImagePanel } from "@/components/Editor/SourceImagePanel";
+import { useT } from "@/lib/i18n";
 
 interface EditorSidebarProps {
   job: ImageJob;
@@ -46,6 +47,7 @@ export function EditorSidebar({
   retouch,
   getRenderedPixelBuffer,
 }: EditorSidebarProps) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-4">
       <Card size="sm" className="gap-3 p-3">
@@ -86,10 +88,10 @@ export function EditorSidebar({
 
       <Card size="sm" className="gap-3 p-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Historial</h3>
+          <h3 className="text-sm font-semibold">{t("history.title")}</h3>
           <div className="flex gap-1.5">
             <IconButton
-              label="Deshacer (Ctrl+Z)"
+              label={t("history.undo")}
               size="icon-sm"
               variant="outline"
               disabled={!history.canUndo}
@@ -98,7 +100,7 @@ export function EditorSidebar({
               <Undo2 />
             </IconButton>
             <IconButton
-              label="Rehacer (Ctrl+Shift+Z)"
+              label={t("history.redo")}
               size="icon-sm"
               variant="outline"
               disabled={!history.canRedo}
@@ -127,14 +129,13 @@ export function EditorSidebar({
 
 /** Placeholder for the sidebar while no finished image is selected. */
 export function EditorSidebarEmpty() {
+  const t = useT();
   return (
     <div className="flex max-w-56 flex-col items-center gap-3 py-10 text-center">
       <span className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <SlidersHorizontal className="size-5" strokeWidth={1.75} />
       </span>
-      <p className="text-sm text-muted-foreground">
-        Los controles de fondo, tamaño y exportación aparecerán aquí cuando selecciones una imagen lista.
-      </p>
+      <p className="text-sm text-muted-foreground">{t("canvas.sidebarEmpty")}</p>
     </div>
   );
 }

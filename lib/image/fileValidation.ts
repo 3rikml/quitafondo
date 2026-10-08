@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 /** Hard cap on the input file size. The model runs in the browser, so very
  * large photos mean long freezes and out-of-memory crashes. */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -19,14 +21,14 @@ const SUPPORTED_MIME_TYPES = new Set([
  */
 export function validateImageFile(file: { type: string; size: number }): string | null {
   if (!file.type.startsWith("image/") || !SUPPORTED_MIME_TYPES.has(file.type.toLowerCase())) {
-    return "Formato no compatible. Usa PNG, JPG, WebP, GIF, BMP o AVIF.";
+    return t("error.unsupportedFormat");
   }
   if (file.size > MAX_FILE_BYTES) {
     const limitMb = Math.round(MAX_FILE_BYTES / (1024 * 1024));
-    return `La imagen supera el límite de ${limitMb} MB.`;
+    return t("error.tooBig", { mb: limitMb });
   }
   if (file.size === 0) {
-    return "El archivo está vacío.";
+    return t("error.empty");
   }
   return null;
 }

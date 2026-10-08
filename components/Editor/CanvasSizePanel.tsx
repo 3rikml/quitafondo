@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { useT, type MessageKey } from "@/lib/i18n";
 
 const PRESET_DIMENSIONS: Record<Exclude<CanvasPreset, "custom" | "original">, { width: number; height: number }> = {
   square: { width: 1080, height: 1080 },
@@ -27,12 +28,12 @@ const PRESET_DIMENSIONS: Record<Exclude<CanvasPreset, "custom" | "original">, { 
   "story-9-16": { width: 1080, height: 1920 },
 };
 
-const PRESET_LABELS: Record<CanvasPreset, string> = {
-  square: "Cuadrado (1:1)",
-  "portrait-4-5": "Retrato (4:5)",
-  "story-9-16": "Historia (9:16)",
-  original: "Tamaño original",
-  custom: "Personalizado",
+const PRESET_LABELS: Record<CanvasPreset, MessageKey> = {
+  square: "size.preset.square",
+  "portrait-4-5": "size.preset.portrait",
+  "story-9-16": "size.preset.story",
+  original: "size.preset.original",
+  custom: "size.preset.custom",
 };
 
 const PRESET_ICONS: Record<CanvasPreset, typeof Square> = {
@@ -72,6 +73,7 @@ export function CanvasSizePanel({
   onResetCropDraft,
   onClearCrop,
 }: CanvasSizePanelProps) {
+  const t = useT();
   function handlePresetChange(preset: CanvasPreset) {
     if (preset === "original" || preset === "custom") {
       onChange({ ...value, preset, widthPx: value.widthPx, heightPx: value.heightPx });
@@ -84,10 +86,10 @@ export function CanvasSizePanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Tamaño del lienzo</h3>
+        <h3 className="text-sm font-semibold">{t("size.title")}</h3>
         <Button size="sm" variant="ghost" onClick={onApplyToAll}>
           <CopyCheck />
-          Aplicar a todas
+          {t("common.applyToAll")}
         </Button>
       </div>
 
@@ -103,7 +105,7 @@ export function CanvasSizePanel({
               className="justify-start"
             >
               <PresetIcon />
-              {PRESET_LABELS[preset]}
+              {t(PRESET_LABELS[preset])}
             </Button>
           );
         })}
@@ -112,7 +114,7 @@ export function CanvasSizePanel({
       {value.preset === "custom" && (
         <div className="flex items-center gap-2">
           <div className="flex flex-col gap-1">
-            <Label htmlFor="canvas-width">Ancho (px)</Label>
+            <Label htmlFor="canvas-width">{t("size.width")}</Label>
             <Input
               id="canvas-width"
               type="number"
@@ -122,7 +124,7 @@ export function CanvasSizePanel({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label htmlFor="canvas-height">Alto (px)</Label>
+            <Label htmlFor="canvas-height">{t("size.height")}</Label>
             <Input
               id="canvas-height"
               type="number"
@@ -135,7 +137,7 @@ export function CanvasSizePanel({
       )}
 
       <div className="flex items-center justify-between">
-        <Label htmlFor="center-subject">Centrar sujeto</Label>
+        <Label htmlFor="center-subject">{t("size.center")}</Label>
         <Switch
           id="center-subject"
           checked={value.centerSubject}
@@ -145,7 +147,7 @@ export function CanvasSizePanel({
 
       {value.centerSubject && (
         <div className="flex flex-col gap-1">
-          <Label>Margen ({value.marginPercent}%)</Label>
+          <Label>{t("size.margin", { value: value.marginPercent })}</Label>
           <Slider
             min={0}
             max={45}
@@ -164,39 +166,36 @@ export function CanvasSizePanel({
       <div className="flex items-center justify-between">
         <Label className="flex items-center gap-1.5">
           <Crop className="size-3.5" />
-          Recortar
+          {t("size.crop")}
         </Label>
         {!cropActive && (
           <div className="flex gap-1.5">
             {value.cropBox && (
               <Button size="sm" variant="ghost" onClick={onClearCrop}>
                 <RotateCcw />
-                Quitar
+                {t("size.removeCrop")}
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={onStartCrop}>
               <Crop />
-              {value.cropBox ? "Editar recorte" : "Recortar"}
+              {value.cropBox ? t("size.editCrop") : t("size.crop")}
             </Button>
           </div>
         )}
       </div>
       {cropActive && (
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-muted-foreground">
-            Arrastra las esquinas o el recuadro sobre el lienzo para ajustar la zona que quieres conservar
-            (Enter aplica, Esc cancela).
-          </p>
+          <p className="text-xs text-muted-foreground">{t("size.cropHint")}</p>
           <div className="flex gap-1.5">
             <Button size="sm" className="flex-1" onClick={onApplyCrop}>
-              Aplicar
+              {t("common.apply")}
             </Button>
             <Button size="sm" variant="outline" onClick={onResetCropDraft}>
               <RotateCcw />
-              Restablecer
+              {t("common.reset")}
             </Button>
             <Button size="sm" variant="ghost" onClick={onCancelCrop}>
-              Cancelar
+              {t("common.cancel")}
             </Button>
           </div>
         </div>
@@ -207,7 +206,7 @@ export function CanvasSizePanel({
       <div className="flex items-center justify-between">
         <Label className="flex items-center gap-1.5">
           <Move className="size-3.5" />
-          Posición y tamaño
+          {t("size.position")}
         </Label>
         <Button
           size="sm"
@@ -216,12 +215,10 @@ export function CanvasSizePanel({
           onClick={() => onChange({ ...value, offsetX: 0, offsetY: 0, manualScale: 1 })}
         >
           <RotateCcw />
-          Restablecer
+          {t("common.reset")}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Arrastra el sujeto o sus esquinas directamente sobre el lienzo para moverlo o cambiar su tamaño, o ajusta aquí.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("size.positionHint")}</p>
       <div className="flex items-center gap-2">
         <div className="flex flex-col gap-1">
           <Label htmlFor="canvas-offset-x">X (px)</Label>
@@ -245,7 +242,7 @@ export function CanvasSizePanel({
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        <Label>Tamaño del sujeto ({Math.round(value.manualScale * 100)}%)</Label>
+        <Label>{t("size.subjectSize", { value: Math.round(value.manualScale * 100) })}</Label>
         <Slider
           min={10}
           max={300}
@@ -263,7 +260,7 @@ export function CanvasSizePanel({
       <div className="flex items-center justify-between">
         <Label className="flex items-center gap-1.5">
           <RotateCw className="size-3.5" />
-          Rotación
+          {t("size.rotation")}
         </Label>
         <Button
           size="sm"
@@ -272,12 +269,10 @@ export function CanvasSizePanel({
           onClick={() => onChange({ ...value, rotationDeg: 0 })}
         >
           <RotateCcw />
-          Restablecer
+          {t("common.reset")}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Usa el control deslizante para enderezar una foto chueca, o los botones para girarla 90°.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("size.rotationHint")}</p>
       <div className="flex items-center gap-2">
         <Button
           size="sm"
@@ -285,7 +280,7 @@ export function CanvasSizePanel({
           onClick={() => onChange({ ...value, rotationDeg: normalizeRotationDeg(value.rotationDeg - 90) })}
         >
           <RotateCcw />
-          90° izquierda
+          {t("size.rotateLeft")}
         </Button>
         <Button
           size="sm"
@@ -293,11 +288,11 @@ export function CanvasSizePanel({
           onClick={() => onChange({ ...value, rotationDeg: normalizeRotationDeg(value.rotationDeg + 90) })}
         >
           <RotateCw />
-          90° derecha
+          {t("size.rotateRight")}
         </Button>
       </div>
       <div className="flex flex-col gap-1">
-        <Label>Ángulo ({Math.round(value.rotationDeg)}°)</Label>
+        <Label>{t("size.angle", { value: Math.round(value.rotationDeg) })}</Label>
         <Slider
           min={-180}
           max={180}

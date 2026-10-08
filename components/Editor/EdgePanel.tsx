@@ -4,6 +4,7 @@ import type { EdgeConfig } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { useT } from "@/lib/i18n";
 
 interface EdgePanelProps {
   value: EdgeConfig;
@@ -16,12 +17,13 @@ function sliderValue(values: number | readonly number[]): number {
 
 /** Fine-tunes the cutout edge: soften it, grow/shrink it, and remove color halos. */
 export function EdgePanel({ value, onChange }: EdgePanelProps) {
-  const shiftLabel = value.shift === 0 ? "sin cambio" : value.shift > 0 ? `+${value.shift} px` : `${value.shift} px`;
+  const t = useT();
+  const shiftLabel = value.shift === 0 ? t("edge.shiftNone") : value.shift > 0 ? `+${value.shift} px` : `${value.shift} px`;
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold">Borde</h3>
+      <h3 className="text-sm font-semibold">{t("edge.title")}</h3>
       <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Suavizar ({value.feather} px)</span>
+        <span className="text-xs text-muted-foreground">{t("edge.feather", { value: value.feather })}</span>
         <Slider
           min={0}
           max={10}
@@ -31,7 +33,7 @@ export function EdgePanel({ value, onChange }: EdgePanelProps) {
         />
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-xs text-muted-foreground">Contraer / expandir ({shiftLabel})</span>
+        <span className="text-xs text-muted-foreground">{t("edge.shift", { value: shiftLabel })}</span>
         <Slider
           min={-5}
           max={5}
@@ -42,7 +44,7 @@ export function EdgePanel({ value, onChange }: EdgePanelProps) {
       </div>
       <div className="flex items-center justify-between gap-2">
         <Label htmlFor="edge-decontaminate" className="text-xs text-muted-foreground">
-          Quitar halo de color del fondo original
+          {t("edge.decontaminate")}
         </Label>
         <Switch
           id="edge-decontaminate"

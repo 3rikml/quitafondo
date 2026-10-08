@@ -15,6 +15,8 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: "http://localhost:3000",
+    // The specs use the Spanish (default) labels; i18n.spec.ts covers English.
+    locale: "es-ES",
     trace: "retain-on-failure",
   },
   // PLAYWRIGHT_CHANNEL=chrome runs the locally installed Chrome instead of

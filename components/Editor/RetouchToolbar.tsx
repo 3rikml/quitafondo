@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { useT } from "@/lib/i18n";
 
 export type RetouchMode = "erase" | "restore";
 /** "brush": paint erase/restore strokes. "magic": click an object to remove or add it back. */
@@ -62,6 +63,7 @@ export function RetouchToolbar({
   onToolChange,
   magic,
 }: RetouchToolbarProps) {
+  const t = useT();
   const selectBrush = (brushMode: RetouchMode) => {
     onToolChange("brush");
     onModeChange(brushMode);
@@ -69,14 +71,14 @@ export function RetouchToolbar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Retoque manual</h3>
+        <h3 className="text-sm font-semibold">{t("retouch.title")}</h3>
         <Button
           size="sm"
           variant={active ? "default" : "outline"}
           onClick={() => onActiveChange(!active)}
         >
           <Wand2 className="size-4" />
-          {active ? "Desactivar" : "Activar retoque"}
+          {active ? t("retouch.deactivate") : t("retouch.activate")}
         </Button>
       </div>
 
@@ -89,7 +91,7 @@ export function RetouchToolbar({
               onClick={() => selectBrush("erase")}
             >
               <Eraser className="size-4" />
-              Borrar
+              {t("retouch.erase")}
             </Button>
             <Button
               size="sm"
@@ -97,11 +99,11 @@ export function RetouchToolbar({
               onClick={() => selectBrush("restore")}
             >
               <PaintbrushVertical className="size-4" />
-              Restaurar
+              {t("retouch.restore")}
             </Button>
             <Button size="sm" variant={tool === "magic" ? "default" : "outline"} onClick={() => onToolChange("magic")}>
               <Sparkles className="size-4" />
-              Mágica
+              {t("retouch.magic")}
             </Button>
           </div>
 
@@ -109,22 +111,24 @@ export function RetouchToolbar({
             <div className="flex flex-col gap-2">
               <div className="grid grid-cols-2 gap-1.5">
                 <Button size="sm" variant={!magic.add ? "secondary" : "ghost"} onClick={() => magic.onAddChange(false)}>
-                  Quitar objeto
+                  {t("retouch.magicRemove")}
                 </Button>
                 <Button size="sm" variant={magic.add ? "secondary" : "ghost"} onClick={() => magic.onAddChange(true)}>
-                  Agregar objeto
+                  {t("retouch.magicAdd")}
                 </Button>
               </div>
               <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                 <MousePointerClick className="mt-0.5 size-3.5 shrink-0" />
-                Haz clic en un objeto para {magic.add ? "agregarlo al" : "quitarlo del"} recorte. Mantén Alt/⌥ para hacer
-                lo contrario.
+                {t(magic.add ? "retouch.magicHintAdd" : "retouch.magicHintRemove")}
               </p>
               {magic.sizes && (
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs text-muted-foreground">Tamaño de la selección</span>
+                  <span className="text-xs text-muted-foreground">{t("retouch.selectionSize")}</span>
                   <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${magic.sizes.count}, 1fr)` }}>
-                    {(magic.sizes.count === 2 ? ["Pequeña", "Grande"] : ["Pequeña", "Mediana", "Grande"]).map(
+                    {(magic.sizes.count === 2
+                      ? [t("retouch.size.small"), t("retouch.size.large")]
+                      : [t("retouch.size.small"), t("retouch.size.medium"), t("retouch.size.large")]
+                    ).map(
                       (label, index) => (
                         <Button
                           key={label}
@@ -152,7 +156,7 @@ export function RetouchToolbar({
             <>
             <div className="flex flex-col gap-1">
               <span className="text-xs text-muted-foreground">
-                Tamaño de pincel ({brushSize}px)
+                {t("retouch.brushSize", { value: brushSize })}
               </span>
               <Slider
                 min={4}
@@ -169,7 +173,7 @@ export function RetouchToolbar({
             {!smart && (
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground">
-                  Dureza del pincel ({Math.round(hardness * 100)}%)
+                  {t("retouch.hardness", { value: Math.round(hardness * 100) })}
                 </span>
                 <Slider
                   min={0}
@@ -186,7 +190,7 @@ export function RetouchToolbar({
 
             <div className="flex items-center justify-between">
               <Label htmlFor="smart-retouch" className="text-xs text-muted-foreground">
-                Detección automática de bordes
+                {t("retouch.smart")}
               </Label>
               <Switch
                 id="smart-retouch"
@@ -197,7 +201,7 @@ export function RetouchToolbar({
             {smart && (
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground">
-                  Sensibilidad ({tolerance}%)
+                  {t("retouch.sensitivity", { value: tolerance })}
                 </span>
                 <Slider
                   min={1}

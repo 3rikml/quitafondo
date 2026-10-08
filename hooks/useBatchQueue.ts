@@ -5,6 +5,7 @@ import type { ImageJob } from "@/lib/types";
 import { DEFAULT_BACKGROUND, DEFAULT_CANVAS, DEFAULT_EXPORT } from "@/lib/types";
 import { removeImageBackground } from "@/hooks/useBackgroundRemoval";
 import { downscaleIfHuge } from "@/lib/image/downscale";
+import { t } from "@/lib/i18n";
 import { isBackgroundRemovalSupported, validateImageFile } from "@/lib/image/fileValidation";
 import { toPersistedJob, fromPersistedJob } from "@/lib/storage/schema";
 import { saveJob, loadAllJobs, deleteJob as deletePersistedJob } from "@/lib/storage/db";
@@ -123,7 +124,7 @@ export function useBatchQueue() {
               return {
                 ...job,
                 originalUrl,
-                notice: `Reducida a ${reduced.width}×${reduced.height} px para procesarla en el navegador`,
+                notice: t("queue.downscaled", { width: reduced.width, height: reduced.height }),
               };
             })
           );
@@ -136,7 +137,7 @@ export function useBatchQueue() {
         .catch((error: unknown) => {
           updateJob(id, {
             status: "error",
-            errorMessage: error instanceof Error ? error.message : "Error desconocido",
+            errorMessage: error instanceof Error ? error.message : t("error.unknown"),
             progress: undefined,
           });
         })

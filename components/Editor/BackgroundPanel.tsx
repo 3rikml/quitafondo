@@ -7,21 +7,22 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { useT, type MessageKey } from "@/lib/i18n";
 
 /** One-click starting points; every one stays fully editable in its tab below. */
-const PRESETS: { label: string; config: BackgroundConfig }[] = [
-  { label: "Blanco", config: { kind: "solid", color: "#ffffff" } },
-  { label: "Gris claro", config: { kind: "solid", color: "#eceae6" } },
-  { label: "Negro", config: { kind: "solid", color: "#111111" } },
-  { label: "Arena", config: { kind: "solid", color: "#e9dcc7" } },
-  { label: "Rosa pastel", config: { kind: "solid", color: "#f6d6dc" } },
-  { label: "Azul cielo", config: { kind: "solid", color: "#cfe3f5" } },
-  { label: "Menta", config: { kind: "solid", color: "#d3eedf" } },
-  { label: "Atardecer", config: { kind: "gradient", from: "#ffb88c", to: "#de6262", angleDeg: 135 } },
-  { label: "Océano", config: { kind: "gradient", from: "#a1c4fd", to: "#2b5876", angleDeg: 160 } },
-  { label: "Durazno", config: { kind: "gradient", from: "#fff1eb", to: "#f5c6a5", angleDeg: 90 } },
-  { label: "Lavanda", config: { kind: "gradient", from: "#e0c3fc", to: "#8ec5fc", angleDeg: 135 } },
-  { label: "Estudio", config: { kind: "gradient", from: "#fafafa", to: "#cfcfcf", angleDeg: 90 } },
+const PRESETS: { label: MessageKey; config: BackgroundConfig }[] = [
+  { label: "background.preset.white", config: { kind: "solid", color: "#ffffff" } },
+  { label: "background.preset.lightGray", config: { kind: "solid", color: "#eceae6" } },
+  { label: "background.preset.black", config: { kind: "solid", color: "#111111" } },
+  { label: "background.preset.sand", config: { kind: "solid", color: "#e9dcc7" } },
+  { label: "background.preset.pink", config: { kind: "solid", color: "#f6d6dc" } },
+  { label: "background.preset.sky", config: { kind: "solid", color: "#cfe3f5" } },
+  { label: "background.preset.mint", config: { kind: "solid", color: "#d3eedf" } },
+  { label: "background.preset.sunset", config: { kind: "gradient", from: "#ffb88c", to: "#de6262", angleDeg: 135 } },
+  { label: "background.preset.ocean", config: { kind: "gradient", from: "#a1c4fd", to: "#2b5876", angleDeg: 160 } },
+  { label: "background.preset.peach", config: { kind: "gradient", from: "#fff1eb", to: "#f5c6a5", angleDeg: 90 } },
+  { label: "background.preset.lavender", config: { kind: "gradient", from: "#e0c3fc", to: "#8ec5fc", angleDeg: 135 } },
+  { label: "background.preset.studio", config: { kind: "gradient", from: "#fafafa", to: "#cfcfcf", angleDeg: 90 } },
 ];
 
 function swatchStyle(config: BackgroundConfig): CSSProperties {
@@ -44,6 +45,7 @@ interface BackgroundPanelProps {
 }
 
 export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPanelProps) {
+  const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Which tab is VISIBLE, tracked separately from the committed config: the
   // "Imagen" tab must be openable before a file exists (there is nothing to
@@ -63,20 +65,20 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Fondo</h3>
+        <h3 className="text-sm font-semibold">{t("background.title")}</h3>
         <Button size="sm" variant="ghost" onClick={onApplyToAll}>
           <CopyCheck />
-          Aplicar a todas
+          {t("common.applyToAll")}
         </Button>
       </div>
 
-      <div className="grid grid-cols-6 gap-1.5" role="group" aria-label="Fondos predefinidos">
+      <div className="grid grid-cols-6 gap-1.5" role="group" aria-label={t("background.presets")}>
         {PRESETS.map(({ label, config }) => (
           <button
             key={label}
             type="button"
-            title={label}
-            aria-label={label}
+            title={t(label)}
+            aria-label={t(label)}
             aria-pressed={isSameBackground(value, config)}
             onClick={() => onChange(config)}
             className={cn(
@@ -96,19 +98,19 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
         }}
       >
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="transparent" title="Sin fondo" aria-label="Sin fondo">
+          <TabsTrigger value="transparent" title={t("background.tab.transparent")} aria-label={t("background.tab.transparent")}>
             <Ban />
           </TabsTrigger>
-          <TabsTrigger value="solid" title="Color sólido" aria-label="Color sólido">
+          <TabsTrigger value="solid" title={t("background.tab.solid")} aria-label={t("background.tab.solid")}>
             <PaintBucket />
           </TabsTrigger>
-          <TabsTrigger value="gradient" title="Degradado" aria-label="Degradado">
+          <TabsTrigger value="gradient" title={t("background.tab.gradient")} aria-label={t("background.tab.gradient")}>
             <Blend />
           </TabsTrigger>
-          <TabsTrigger value="image" title="Imagen" aria-label="Imagen">
+          <TabsTrigger value="image" title={t("background.tab.image")} aria-label={t("background.tab.image")}>
             <ImageIcon />
           </TabsTrigger>
-          <TabsTrigger value="blur" title="Foto original desenfocada" aria-label="Foto original desenfocada">
+          <TabsTrigger value="blur" title={t("background.tab.blur")} aria-label={t("background.tab.blur")}>
             <Aperture />
           </TabsTrigger>
         </TabsList>
@@ -170,7 +172,7 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
 
         <TabsContent value="blur" className="flex flex-col gap-1 pt-2">
           <span className="text-xs text-muted-foreground">
-            Desenfoque ({value.kind === "blur" ? value.amount : 50}%) — efecto retrato con tu propia foto
+            {t("background.blurAmount", { amount: value.kind === "blur" ? value.amount : 50 })}
           </span>
           <Slider
             min={0}
@@ -186,7 +188,7 @@ export function BackgroundPanel({ value, onChange, onApplyToAll }: BackgroundPan
 
         <TabsContent value="image" className="pt-2">
           <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
-            Elegir imagen…
+            {t("background.chooseImage")}
           </Button>
           <input
             ref={fileInputRef}

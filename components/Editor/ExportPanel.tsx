@@ -8,6 +8,7 @@ import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useT } from "@/lib/i18n";
 
 interface ExportPanelProps {
   value: ExportConfig;
@@ -23,6 +24,7 @@ interface ExportPanelProps {
 }
 
 export function ExportPanel({ value, onChange, onApplyToAll, getRenderedPixelBuffer, fileNameBase }: ExportPanelProps) {
+  const t = useT();
   const [isExporting, setIsExporting] = useState(false);
 
   async function handleDownload() {
@@ -40,10 +42,10 @@ export function ExportPanel({ value, onChange, onApplyToAll, getRenderedPixelBuf
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Exportar</h3>
+        <h3 className="text-sm font-semibold">{t("export.title")}</h3>
         <Button size="sm" variant="ghost" onClick={onApplyToAll}>
           <CopyCheck />
-          Aplicar a todas
+          {t("common.applyToAll")}
         </Button>
       </div>
 
@@ -58,13 +60,13 @@ export function ExportPanel({ value, onChange, onApplyToAll, getRenderedPixelBuf
       {value.format === "jpg" && (
         <p className="flex items-start gap-1.5 rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} />
-          JPG no soporta transparencia: el fondo se rellenará de blanco donde sea transparente.
+          {t("export.jpgWarning")}
         </p>
       )}
 
       {value.format !== "png" && (
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-muted-foreground">Calidad ({value.quality})</span>
+          <span className="text-xs text-muted-foreground">{t("export.quality", { value: value.quality })}</span>
           <Slider
             min={1}
             max={100}
@@ -80,7 +82,7 @@ export function ExportPanel({ value, onChange, onApplyToAll, getRenderedPixelBuf
 
       <Button onClick={handleDownload} disabled={isExporting}>
         <Download />
-        {isExporting ? "Exportando…" : "Descargar imagen"}
+        {isExporting ? t("export.exporting") : t("export.download")}
       </Button>
     </div>
   );

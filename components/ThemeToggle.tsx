@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { IconButton } from "@/components/IconButton";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 /**
  * Lets the user override the OS-driven theme (see `ThemeSync`). Starts
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
  * script (not React) is what sets that class on first load.
  */
 export function ThemeToggle({ className }: { className?: string }) {
+  const t = useT();
   const [isDark, setIsDark] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function ThemeToggle({ className }: { className?: string }) {
 
   return (
     <IconButton
-      label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+      label={isDark ? t("header.themeLight") : t("header.themeDark")}
       onClick={toggle}
       className={cn("shrink-0", className)}
     >

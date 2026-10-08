@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 /**
  * Formats every browser decodes reliably, including inside the segmentation
  * Web Worker. Our upload validation (`fileValidation.ts`) intentionally allows
@@ -25,7 +27,7 @@ export async function ensureSupportedImageFormat(file: File | Blob): Promise<Blo
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    throw new Error("No se pudo leer esta imagen. Prueba con PNG, JPG o WebP.");
+    throw new Error(t("error.unreadable"));
   }
 
   try {
@@ -36,7 +38,7 @@ export async function ensureSupportedImageFormat(file: File | Blob): Promise<Blo
     ctx.drawImage(bitmap, 0, 0);
 
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-    if (!blob) throw new Error("No se pudo convertir esta imagen a un formato compatible.");
+    if (!blob) throw new Error(t("error.convertFailed"));
     return blob;
   } finally {
     bitmap.close();

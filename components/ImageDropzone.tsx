@@ -3,12 +3,14 @@
 import { useCallback, useRef, useState } from "react";
 import { UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 interface ImageDropzoneProps {
   onFilesSelected: (files: File[]) => void;
 }
 
 export function ImageDropzone({ onFilesSelected }: ImageDropzoneProps) {
+  const t = useT();
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -50,8 +52,8 @@ export function ImageDropzone({ onFilesSelected }: ImageDropzoneProps) {
       >
         <UploadCloud className="size-5" strokeWidth={1.75} />
       </span>
-      <p className="text-sm font-medium">Arrastra tus imágenes aquí</p>
-      <p className="text-xs text-muted-foreground">o haz clic para seleccionarlas (puedes elegir varias)</p>
+      <p className="text-sm font-medium">{t("dropzone.title")}</p>
+      <p className="text-xs text-muted-foreground">{t("dropzone.subtitle")}</p>
       <input
         ref={inputRef}
         type="file"

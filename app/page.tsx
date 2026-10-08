@@ -21,8 +21,10 @@ import { CanvasToolbar, type CopyState } from "@/components/Editor/CanvasToolbar
 import { CompareOverlay, CropOverlay, SubjectHandles } from "@/components/Editor/CanvasOverlays";
 import { EmptyCanvasView, ProcessingView } from "@/components/Editor/ProcessingView";
 import { EditorSidebar, EditorSidebarEmpty } from "@/components/Editor/EditorSidebar";
+import { useT } from "@/lib/i18n";
 
 export default function Home() {
+  const t = useT();
   const { jobs, addFiles, updateJob, retryJob, removeJob, replaceJobFile, isSupported } = useBatchQueue();
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const selectedJob = useMemo(() => jobs.find((job) => job.id === selectedJobId) ?? null, [jobs, selectedJobId]);
@@ -272,7 +274,7 @@ export default function Home() {
       <div className="relative flex flex-1 overflow-hidden">
         <SidePanel
           side="left"
-          title="Imágenes"
+          title={t("panel.images")}
           open={mobileLeftOpen}
           onClose={() => setMobileLeftOpen(false)}
           className="lg:w-72"
@@ -354,7 +356,7 @@ export default function Home() {
 
         <SidePanel
           side="right"
-          title="Editar"
+          title={t("panel.edit")}
           open={mobileRightOpen}
           onClose={() => setMobileRightOpen(false)}
           className="lg:w-80"

@@ -5,6 +5,7 @@ import type { ImageJob } from "@/lib/types";
 import { runMagicSelect } from "@/lib/ai/client";
 import { applyMaskToOverrides } from "@/lib/ai/samMask";
 import { NO_OVERRIDE } from "@/lib/image/alphaCompose";
+import { t } from "@/lib/i18n";
 import type { HistoryEntry } from "@/hooks/useEditorHistory";
 
 export type MagicStatus =
@@ -143,11 +144,11 @@ export function useMagicSelect({ selectedJob, active, overridesByJobIdRef, histo
 export function magicStatusText(status: MagicStatus): string | null {
   switch (status.kind) {
     case "preparing":
-      return `Analizando la imagen… ${Math.round(status.progress * 100)}%`;
+      return t("retouch.magicPreparing", { percent: Math.round(status.progress * 100) });
     case "working":
-      return "Seleccionando…";
+      return t("retouch.magicWorking");
     case "error":
-      return `No se pudo usar la selección mágica: ${status.message}`;
+      return t("retouch.magicError", { message: status.message });
     default:
       return null;
   }
