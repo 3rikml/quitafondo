@@ -381,6 +381,7 @@ export default function Home() {
                 },
               }}
               getRenderedPixelBuffer={() => canvasHandleRef.current?.getRenderedPixelBuffer() ?? null}
+              getHarmonyStats={() => canvasHandleRef.current?.getHarmonyStats() ?? null}
             />
           ) : (
             <EditorSidebarEmpty />

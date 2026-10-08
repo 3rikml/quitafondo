@@ -9,6 +9,7 @@ import { paintBackground } from "@/lib/image/drawBackground";
 import { createOverrideBuffer } from "@/lib/image/alphaCompose";
 import { composeCutoutWithRetouch } from "@/lib/image/composeCutout";
 import { prepareSubject } from "@/lib/image/prepareSubject";
+import { meanColor, type ColorStats } from "@/lib/image/harmonize";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 
 export type CanvasFit = FitResult;
@@ -37,6 +38,12 @@ export interface EditorCanvasHandle {
    * plain circle.
    */
   getSourcePixels(): PixelBuffer | null;
+  /**
+   * Mean colors of the subject (model cutout, before adjustments) and of the
+   * current background, for "Armonizar con el fondo". Null with a transparent
+   * background, or before the needed images have loaded.
+   */
+  getHarmonyStats(): { subject: ColorStats; background: ColorStats } | null;
 }
 
 interface EditorCanvasProps {
@@ -293,6 +300,25 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
     },
     getSourcePixels() {
       return sourcePixelsRef.current;
+    },
+    getHarmonyStats() {
+      const sourcePixels = sourcePixelsRef.current;
+      if (!sourcePixels || background.kind === "transparent") return null;
+      const subject = meanColor(sourcePixels, 200);
+      // A tiny render of the background is plenty for its average color.
+      const sample = document.createElement("canvas");
+      sample.width = 64;
+      sample.height = 64;
+      const ctx = sample.getContext("2d")!;
+      const drawable =
+        background.kind === "image"
+          ? resolveCachedImage(background.url, imageCacheRef.current, () => {})
+          : background.kind === "blur"
+            ? getOriginalCanvas()
+            : null;
+      paintBackground(ctx, 64, 64, background, drawable);
+      const backgroundStats = meanColor({ width: 64, height: 64, data: ctx.getImageData(0, 0, 64, 64).data });
+      return subject && backgroundStats ? { subject, background: backgroundStats } : null;
     },
   }));
 

@@ -124,6 +124,8 @@ export const en: Record<MessageKey, string> = {
   "adjust.contrast": "Contrast",
   "adjust.saturation": "Saturation",
   "adjust.temperature": "Temperature",
+  "adjust.harmonize": "Match the background",
+  "adjust.harmonizeNeedsBackground": "Pick a background to match the subject's light and color to it.",
 
   "size.title": "Canvas size",
   "size.preset.square": "Square (1:1)",

@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Wand } from "lucide-react";
 import type { AdjustConfig } from "@/lib/types";
 import { NEUTRAL_ADJUST, isNeutralAdjust } from "@/lib/image/colorAdjust";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { useT, type MessageKey } from "@/lib/i18n";
 interface AdjustPanelProps {
   value: AdjustConfig;
   onChange: (adjust: AdjustConfig) => void;
+  /** Sets the sliders to match the current background; null when there is no background to match. */
+  onHarmonize: (() => void) | null;
 }
 
 const SLIDERS: { key: keyof AdjustConfig; label: MessageKey }[] = [
@@ -22,7 +24,7 @@ const SLIDERS: { key: keyof AdjustConfig; label: MessageKey }[] = [
 const signed = (value: number) => (value > 0 ? `+${value}` : `${value}`);
 
 /** Light and color of the subject only (the background keeps its own look). */
-export function AdjustPanel({ value, onChange }: AdjustPanelProps) {
+export function AdjustPanel({ value, onChange, onHarmonize }: AdjustPanelProps) {
   const t = useT();
   return (
     <div className="flex flex-col gap-3">
@@ -33,6 +35,18 @@ export function AdjustPanel({ value, onChange }: AdjustPanelProps) {
           {t("common.reset")}
         </Button>
       </div>
+      <Button
+        size="sm"
+        variant="outline"
+        className="self-start"
+        disabled={!onHarmonize}
+        onClick={() => onHarmonize?.()}
+        title={onHarmonize ? undefined : t("adjust.harmonizeNeedsBackground")}
+      >
+        <Wand />
+        {t("adjust.harmonize")}
+      </Button>
+      {!onHarmonize && <p className="-mt-1.5 text-xs text-muted-foreground">{t("adjust.harmonizeNeedsBackground")}</p>}
       {SLIDERS.map(({ key, label }) => (
         <div key={key} className="flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">

@@ -122,6 +122,8 @@ export const es = {
   "adjust.contrast": "Contraste",
   "adjust.saturation": "Saturación",
   "adjust.temperature": "Temperatura",
+  "adjust.harmonize": "Armonizar con el fondo",
+  "adjust.harmonizeNeedsBackground": "Elige un fondo para poder armonizar la luz y el color del sujeto con él.",
 
   "size.title": "Tamaño del lienzo",
   "size.preset.square": "Cuadrado (1:1)",

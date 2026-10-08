@@ -42,3 +42,19 @@ test("brightness is applied to the subject in the downloaded image", async ({ pa
   await page.getByRole("button", { name: "Restablecer", exact: true }).first().click();
   await expect(page.getByText("Brillo (0)")).toBeVisible();
 });
+
+test("match the background cools a warm subject placed on a cool ocean gradient", async ({ page }) => {
+  await page.goto("/");
+  await page.locator('input[type="file"]').first().setInputFiles(await makeTestPhoto(page));
+  await expect(page.getByRole("button", { name: /Descargar PNG/ })).toBeVisible();
+
+  const harmonize = page.getByRole("button", { name: "Armonizar con el fondo" });
+  await expect(harmonize).toBeDisabled(); // transparent background: nothing to match
+
+  // The synthetic subject is red and yellow (warm); "Océano" is blue (cool).
+  await page.getByRole("button", { name: "Océano" }).click();
+  await expect(harmonize).toBeEnabled();
+  await harmonize.click();
+  const temperature = page.getByRole("slider", { name: "Temperatura" });
+  await expect.poll(async () => Number(await temperature.getAttribute("aria-valuenow"))).toBeLessThan(0);
+});

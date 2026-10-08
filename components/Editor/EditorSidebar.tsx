@@ -3,6 +3,7 @@
 import { Redo2, SlidersHorizontal, Undo2 } from "lucide-react";
 import type { BackgroundConfig, ImageJob } from "@/lib/types";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
+import { suggestHarmony, type ColorStats } from "@/lib/image/harmonize";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { IconButton } from "@/components/IconButton";
@@ -34,6 +35,7 @@ interface EditorSidebarProps {
   history: { canUndo: boolean; canRedo: boolean; undo: () => void; redo: () => void };
   retouch: RetouchToolbarProps;
   getRenderedPixelBuffer: () => PixelBuffer | null;
+  getHarmonyStats: () => { subject: ColorStats; background: ColorStats } | null;
 }
 
 /** The right-hand column of editing controls for the selected, finished image. */
@@ -47,6 +49,7 @@ export function EditorSidebar({
   history,
   retouch,
   getRenderedPixelBuffer,
+  getHarmonyStats,
 }: EditorSidebarProps) {
   const t = useT();
   return (
@@ -73,6 +76,16 @@ export function EditorSidebar({
         <AdjustPanel
           value={job.canvas.adjust}
           onChange={(adjust) => updateJob(job.id, { canvas: { ...job.canvas, adjust } })}
+          onHarmonize={
+            job.background.kind === "transparent"
+              ? null
+              : () => {
+                  const stats = getHarmonyStats();
+                  if (!stats) return;
+                  const adjust = suggestHarmony(stats.subject, stats.background, job.canvas.adjust);
+                  updateJob(job.id, { canvas: { ...job.canvas, adjust } });
+                }
+          }
         />
       </Card>
 
