@@ -117,6 +117,12 @@ export const es = {
   "edge.shiftNone": "sin cambio",
   "edge.decontaminate": "Quitar halo de color del fondo original",
 
+  "adjust.title": "Luz y color",
+  "adjust.brightness": "Brillo",
+  "adjust.contrast": "Contraste",
+  "adjust.saturation": "Saturación",
+  "adjust.temperature": "Temperatura",
+
   "size.title": "Tamaño del lienzo",
   "size.preset.square": "Cuadrado (1:1)",
   "size.preset.portrait": "Retrato (4:5)",

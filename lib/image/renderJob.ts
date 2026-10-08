@@ -2,7 +2,7 @@ import type { BackgroundConfig, CanvasConfig, ExportConfig } from "../types";
 import { computeAlphaBoundingBox } from "./boundingBox";
 import { resolveCanvasLayout } from "./canvasFit";
 import { composeCutoutWithRetouch } from "./composeCutout";
-import { refineCutout } from "./edgeRefine";
+import { prepareSubject } from "./prepareSubject";
 import { paintBackground } from "./drawBackground";
 import { drawSubject } from "./drawSubject";
 import { MIME_BY_FORMAT, flattenOnWhite, requiresFlattening } from "./exportFormat";
@@ -36,11 +36,8 @@ export async function renderJobToBlob(
     // and a blurred-photo background; skip the decode when none applies.
     const needsOriginal = Boolean(retouchOverride) || background.kind === "blur" || canvasConfig.edge.decontaminate;
     const originalPixels = needsOriginal && originalUrl ? await loadOriginalPixels(originalUrl) : null;
-    const composedPixels = composeCutoutWithRetouch(
-      refineCutout(sourcePixels, originalPixels, canvasConfig.edge),
-      originalPixels,
-      retouchOverride ?? null
-    );
+    const prepared = prepareSubject(sourcePixels, originalPixels, canvasConfig);
+    const composedPixels = composeCutoutWithRetouch(prepared.cutout, prepared.restoreSource, retouchOverride ?? null);
     const composedSource = pixelBufferToCanvas(composedPixels);
 
     // Bounding box comes from the model's own alpha (not the retouched

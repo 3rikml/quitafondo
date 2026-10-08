@@ -18,6 +18,15 @@ export interface EdgeConfig {
   decontaminate: boolean;
 }
 
+/** Light and color of the subject (not the background), each -100..100. */
+export interface AdjustConfig {
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  /** Warm (+) / cool (-). */
+  temperature: number;
+}
+
 export type ShadowKind = "none" | "soft" | "contact";
 
 export interface ShadowConfig {
@@ -62,6 +71,7 @@ export interface CanvasConfig {
   /** Drawn beneath the subject, inside the same fit (so it rotates/scales with it). */
   shadow: ShadowConfig;
   edge: EdgeConfig;
+  adjust: AdjustConfig;
 }
 
 export type ExportFormat = "png" | "jpg" | "webp";
@@ -104,6 +114,7 @@ export const DEFAULT_CANVAS: CanvasConfig = {
   cropBox: null,
   shadow: { kind: "none", intensity: 50 },
   edge: { feather: 0, shift: 0, decontaminate: true },
+  adjust: { brightness: 0, contrast: 0, saturation: 0, temperature: 0 },
 };
 
 export const DEFAULT_EXPORT: ExportConfig = { format: "png", quality: 92 };

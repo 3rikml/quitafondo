@@ -75,6 +75,7 @@ describe("resolveCanvasLayout", () => {
     cropBox: null,
     shadow: { kind: "none", intensity: 50 },
     edge: { feather: 0, shift: 0, decontaminate: true },
+    adjust: { brightness: 0, contrast: 0, saturation: 0, temperature: 0 },
   };
 
   it("uses the source size and an identity transform for the original preset", () => {

@@ -119,6 +119,12 @@ export const en: Record<MessageKey, string> = {
   "edge.shiftNone": "no change",
   "edge.decontaminate": "Remove the original background's color halo",
 
+  "adjust.title": "Light & color",
+  "adjust.brightness": "Brightness",
+  "adjust.contrast": "Contrast",
+  "adjust.saturation": "Saturation",
+  "adjust.temperature": "Temperature",
+
   "size.title": "Canvas size",
   "size.preset.square": "Square (1:1)",
   "size.preset.portrait": "Portrait (4:5)",

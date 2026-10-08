@@ -8,7 +8,7 @@ import { drawSubject } from "@/lib/image/drawSubject";
 import { paintBackground } from "@/lib/image/drawBackground";
 import { createOverrideBuffer } from "@/lib/image/alphaCompose";
 import { composeCutoutWithRetouch } from "@/lib/image/composeCutout";
-import { refineCutout } from "@/lib/image/edgeRefine";
+import { prepareSubject } from "@/lib/image/prepareSubject";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 
 export type CanvasFit = FitResult;
@@ -91,11 +91,14 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
   const warnedDimensionMismatchRef = useRef(false);
   const subjectBoxRef = useRef<BoundingBox | null>(null);
   const overrideAlphaRef = useRef<Int16Array | null>(null);
-  // Edge refinement is a full-image pass; cache it so brush repaints (which
-  // only change the overrides) don't redo it on every frame.
-  const refinedRef = useRef<{ key: string; source: PixelBuffer; original: PixelBuffer | null; pixels: PixelBuffer } | null>(
-    null
-  );
+  // Edge refinement and color adjustments are full-image passes; cache them
+  // so brush repaints (which only change the overrides) don't redo them.
+  const preparedRef = useRef<{
+    key: string;
+    source: PixelBuffer;
+    original: PixelBuffer | null;
+    prepared: ReturnType<typeof prepareSubject>;
+  } | null>(null);
   const fitRef = useRef<CanvasFit | null>(null);
   const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
@@ -254,18 +257,19 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
       );
     }
 
-    return composeCutoutWithRetouch(getRefinedCutout(sourcePixels, originalPixels), originalPixels, overrides);
+    const { cutout, restoreSource } = getPreparedSubject(sourcePixels, originalPixels);
+    return composeCutoutWithRetouch(cutout, restoreSource, overrides);
   }
 
-  function getRefinedCutout(sourcePixels: PixelBuffer, originalPixels: PixelBuffer | null): PixelBuffer {
-    const key = JSON.stringify(canvasConfig.edge);
-    const cached = refinedRef.current;
+  function getPreparedSubject(sourcePixels: PixelBuffer, originalPixels: PixelBuffer | null) {
+    const key = JSON.stringify([canvasConfig.edge, canvasConfig.adjust]);
+    const cached = preparedRef.current;
     if (cached && cached.key === key && cached.source === sourcePixels && cached.original === originalPixels) {
-      return cached.pixels;
+      return cached.prepared;
     }
-    const pixels = refineCutout(sourcePixels, originalPixels, canvasConfig.edge);
-    refinedRef.current = { key, source: sourcePixels, original: originalPixels, pixels };
-    return pixels;
+    const prepared = prepareSubject(sourcePixels, originalPixels, canvasConfig);
+    preparedRef.current = { key, source: sourcePixels, original: originalPixels, prepared };
+    return prepared;
   }
 
   useImperativeHandle(ref, () => ({
