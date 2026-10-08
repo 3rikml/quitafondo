@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { computeCenteredFit, computeContainFit, getCropClipRect, resolveCanvasLayout } from "../canvasFit";
+import {
+  canvasPointToSource,
+  computeCenteredFit, computeContainFit, getCropClipRect, resolveCanvasLayout } from "../canvasFit";
 import type { CanvasConfig } from "../../types";
 
 describe("computeCenteredFit", () => {
@@ -249,5 +251,26 @@ describe("getCropClipRect", () => {
       { x: 20, y: 30, width: 40, height: 50 }
     );
     expect(rect).toEqual({ x: 10 + 20 * 2, y: -5 + 30 * 2, width: 80, height: 100 });
+  });
+});
+
+describe("canvasPointToSource", () => {
+  const fit = { scale: 2, offsetX: 10, offsetY: 20, rotationDeg: 0, anchorX: 300, anchorY: 200 };
+
+  it("undoes offset and scale, ignoring the anchor when there is no rotation", () => {
+    expect(canvasPointToSource(110, 220, fit)).toEqual({ x: 50, y: 100 });
+  });
+
+  it("round-trips a source point through the same rotation drawSubject applies", () => {
+    const rotated = { ...fit, rotationDeg: 90 };
+    // Forward transform: scale + offset, then rotate 90° around the anchor.
+    const source = { x: 40, y: 15 };
+    const px = rotated.offsetX + source.x * rotated.scale;
+    const py = rotated.offsetY + source.y * rotated.scale;
+    const canvasX = rotated.anchorX - (py - rotated.anchorY);
+    const canvasY = rotated.anchorY + (px - rotated.anchorX);
+    const back = canvasPointToSource(canvasX, canvasY, rotated);
+    expect(back.x).toBeCloseTo(source.x, 6);
+    expect(back.y).toBeCloseTo(source.y, 6);
   });
 });

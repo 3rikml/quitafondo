@@ -2,6 +2,7 @@
 
 import { Eraser, PaintbrushVertical, Wand2 } from "lucide-react";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
+import { canvasPointToSource, type FitResult } from "@/lib/image/canvasFit";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 
 export type RetouchMode = "erase" | "restore";
 
-interface RetouchToolbarProps {
+export interface RetouchToolbarProps {
   active: boolean;
   onActiveChange: (active: boolean) => void;
   mode: RetouchMode;
@@ -48,14 +49,14 @@ export function RetouchToolbar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Editar recorte</h3>
+        <h3 className="text-sm font-semibold">Retoque manual</h3>
         <Button
           size="sm"
           variant={active ? "default" : "outline"}
           onClick={() => onActiveChange(!active)}
         >
           <Wand2 className="size-4" />
-          {active ? "Desactivar" : "Editar recorte"}
+          {active ? "Desactivar" : "Activar pincel"}
         </Button>
       </div>
 
@@ -313,41 +314,18 @@ export function paintSmartBrushStroke(
 
 /**
  * Converts a pointer event's client (viewport) coordinates into source-image
- * pixel coordinates, accounting for the canvas's on-screen scaling (CSS size
- * vs. `canvas.width`/`height`) AND the fit transform `EditorCanvas` applied
- * when drawing the source image (see `EditorCanvasHandle.getFit()`). Plain
- * division by CSS scale is not enough because the source image is also
- * scaled/translated/rotated inside the canvas by `fit.scale`,
- * `fit.offsetX`, `fit.offsetY`, and `fit.rotationDeg`.
+ * pixel coordinates: first from CSS pixels to canvas pixels (the canvas is
+ * displayed scaled), then through the inverse of the fit `EditorCanvas` drew
+ * the subject with (see `canvasPointToSource`).
  */
 export function canvasToSourceCoords(
   canvas: HTMLCanvasElement,
-  fit: { scale: number; offsetX: number; offsetY: number; rotationDeg: number; anchorX: number; anchorY: number },
+  fit: FitResult,
   clientX: number,
   clientY: number
 ): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
-  const cssX = clientX - rect.left;
-  const cssY = clientY - rect.top;
-
-  const canvasX = cssX * (canvas.width / rect.width);
-  const canvasY = cssY * (canvas.height / rect.height);
-
-  let dx = canvasX - fit.anchorX;
-  let dy = canvasY - fit.anchorY;
-
-  if (fit.rotationDeg !== 0) {
-    const rad = (-fit.rotationDeg * Math.PI) / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-    const rx = dx * cos - dy * sin;
-    const ry = dx * sin + dy * cos;
-    dx = rx;
-    dy = ry;
-  }
-
-  const sourceX = (dx - fit.offsetX) / fit.scale;
-  const sourceY = (dy - fit.offsetY) / fit.scale;
-
-  return { x: sourceX, y: sourceY };
+  const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
+  const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
+  return canvasPointToSource(canvasX, canvasY, fit);
 }

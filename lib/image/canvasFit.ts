@@ -187,3 +187,23 @@ export function getCropClipRect(
     height: cropBox.height * fit.scale,
   };
 }
+
+/**
+ * Inverse of the transform `drawSubject` applies (rotate around the anchor,
+ * then translate by the offset and scale): maps a point in canvas pixels back
+ * to source-image pixels, e.g. to know where a brush dab lands.
+ */
+export function canvasPointToSource(canvasX: number, canvasY: number, fit: FitResult): { x: number; y: number } {
+  let x = canvasX;
+  let y = canvasY;
+  if (fit.rotationDeg !== 0) {
+    const rad = (-fit.rotationDeg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = x - fit.anchorX;
+    const dy = y - fit.anchorY;
+    x = fit.anchorX + dx * cos - dy * sin;
+    y = fit.anchorY + dx * sin + dy * cos;
+  }
+  return { x: (x - fit.offsetX) / fit.scale, y: (y - fit.offsetY) / fit.scale };
+}
