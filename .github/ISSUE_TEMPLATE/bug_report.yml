@@ -1,0 +1,33 @@
+name: Reportar un error / Bug report
+description: Algo no funciona como esperabas.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: ¿Qué pasó? / What happened?
+      description: Describe el error y qué esperabas que pasara.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo / Steps to reproduce
+      placeholder: |
+        1. Sube una imagen...
+        2. Haz clic en...
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Navegador y sistema operativo / Browser and OS
+      placeholder: Chrome 140 en macOS 15 (Apple M2)
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Consola del navegador / Browser console
+      description: Mensajes de error y la línea "[QuitaFondo] Cargando …" que indica el modelo y dispositivo usados.
+      render: text

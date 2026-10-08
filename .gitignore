@@ -43,6 +43,3 @@ next-env.d.ts
 # internal planning notes, not meant for the public repo
 /docs/superpowers/
 
-# AI coding agent config (auto-regenerated locally, not meant for the public repo)
-/AGENTS.md
-/CLAUDE.md

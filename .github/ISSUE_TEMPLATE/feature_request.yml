@@ -1,0 +1,23 @@
+name: Proponer una mejora / Feature request
+description: Sugiere una idea para QuitaFondo.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: ¿Qué problema resuelve? / What problem does it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta / Proposal
+      description: ¿Cómo te imaginas que funcione?
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacidad / Privacy
+      options:
+        - label: La idea funciona sin subir imágenes a ningún servidor. / It works without uploading images to a server.
