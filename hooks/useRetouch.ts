@@ -12,13 +12,24 @@ import {
 } from "@/components/Editor/RetouchToolbar";
 import type { EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
 
+const MIN_BRUSH = 4;
+const MAX_BRUSH = 120;
+
+/**
+ * Starting brush radius for a photo: 2% of its longest side, so the brush
+ * covers a similar share of a 360 px thumbnail and a 4096 px photo
+ * (a fixed 24 px swallowed half a nose on small photos).
+ */
+export function defaultBrushSize(width: number, height: number): number {
+  return Math.min(MAX_BRUSH, Math.max(MIN_BRUSH, Math.round(Math.max(width, height) * 0.02)));
+}
+
 /**
  * Brush state and the per-job alpha override buffers the brush paints into.
  * The buffers live here, keyed by job id, so switching to another image and
  * back keeps that image's strokes.
  */
 export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObject<EditorCanvasHandle | null>) {
-  const [active, setActive] = useState(false);
   const [mode, setMode] = useState<RetouchMode>("erase");
   const [tool, setTool] = useState<RetouchTool>("brush");
   const [brushSize, setBrushSize] = useState(24);
@@ -33,7 +44,8 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
   // the current pixel count and is fully reset after every dab.
   const smartScratchRef = useRef(createSmartBrushScratch(0));
   const rafRef = useRef<number | null>(null);
-
+  // The image the brush size was last fitted to.
+  const sizedForJobRef = useRef<string | null>(null);
   useEffect(
     () => () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -85,9 +97,15 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
     scheduleRedraw();
   }
 
+  /** Fits the brush to a newly opened image; manual changes stand until the next image. */
+  const fitBrushToImage = useCallback((jobId: string, width: number, height: number) => {
+    if (sizedForJobRef.current === jobId) return;
+    sizedForJobRef.current = jobId;
+    setBrushSize(defaultBrushSize(width, height));
+  }, []);
+
   return {
-    active,
-    setActive,
+    fitBrushToImage,
     tool,
     version,
     overridesByJobIdRef,

@@ -132,6 +132,14 @@ export default function Home() {
     saveSelectedJobId(selectedJobId);
   }, [selectedJobId]);
 
+  // Fit the brush to each image once it has been drawn (its pixel size is known then).
+  const editingJobId = editing ? selectedJob?.id : undefined;
+  const { fitBrushToImage } = retouch;
+  useEffect(() => {
+    const size = canvasHandleRef.current?.getSourceSize();
+    if (editingJobId && size) fitBrushToImage(editingJobId, size.width, size.height);
+  }, [editingJobId, canvasRenderTick, fitBrushToImage]);
+
   // Jump straight to the first new image, so the user watches it being processed.
   const handleFilesSelected = useCallback(
     (files: File[]) => {
