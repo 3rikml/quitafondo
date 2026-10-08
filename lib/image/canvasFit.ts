@@ -207,3 +207,22 @@ export function canvasPointToSource(canvasX: number, canvasY: number, fit: FitRe
   }
   return { x: (x - fit.offsetX) / fit.scale, y: (y - fit.offsetY) / fit.scale };
 }
+
+/**
+ * The same canvas settings for the photo enlarged `factor` times (after
+ * "Mejorar calidad"): the crop, in source pixels, grows with it, and so do
+ * the manual offsets when the canvas takes the photo's own size. A canvas of
+ * fixed pixels keeps its offsets, since the subject is refitted into it.
+ */
+export function scaleCanvasConfig(config: CanvasConfig, factor: number): CanvasConfig {
+  const followsSource = config.preset === "original" || config.widthPx <= 0 || config.heightPx <= 0;
+  const crop = config.cropBox;
+  return {
+    ...config,
+    cropBox: crop
+      ? { x: crop.x * factor, y: crop.y * factor, width: crop.width * factor, height: crop.height * factor }
+      : crop,
+    offsetX: followsSource ? config.offsetX * factor : config.offsetX,
+    offsetY: followsSource ? config.offsetY * factor : config.offsetY,
+  };
+}

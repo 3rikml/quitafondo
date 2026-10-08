@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ZOOM_MAX, ZOOM_MIN, wheelZoomFactor, zoomAt } from "../viewport";
+import { ZOOM_MAX, ZOOM_MIN, containSize, wheelZoomFactor, zoomAt } from "../viewport";
 
 const screenOf = (view: { zoom: number; panX: number; panY: number }, cx: number, cy: number) => [
   view.panX + cx * view.zoom,
@@ -32,5 +32,19 @@ describe("wheelZoomFactor", () => {
     expect(wheelZoomFactor(-100)).toBeGreaterThan(1);
     expect(wheelZoomFactor(100)).toBeLessThan(1);
     expect(wheelZoomFactor(-100) * wheelZoomFactor(100)).toBeCloseTo(1, 10);
+  });
+});
+
+describe("containSize", () => {
+  it("shrinks a tall photo to the area's height, keeping its proportions", () => {
+    expect(containSize(1920, 2889, 1000, 700)).toEqual({ width: 1920 * (700 / 2889), height: 700 });
+  });
+
+  it("shrinks a wide photo to the area's width", () => {
+    expect(containSize(2000, 500, 1000, 700)).toEqual({ width: 1000, height: 250 });
+  });
+
+  it("never enlarges a photo smaller than the area", () => {
+    expect(containSize(360, 450, 1000, 700)).toEqual({ width: 360, height: 450 });
   });
 });

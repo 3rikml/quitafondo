@@ -15,7 +15,7 @@ interface ToolPanelContentProps {
   tool: EditorTool;
   job: ImageJob;
   updateJob: (id: string, patch: Partial<ImageJob>) => void;
-  replaceJobFile: (id: string, file: File) => string | null;
+  replaceJobFile: (id: string, file: File, sourceScale?: number) => string | null;
   onBackgroundChange: (background: BackgroundConfig) => void;
   /** Copies one of the selected job's settings to every finished job. */
   onApplyToAll: (setting: "background" | "canvas") => void;

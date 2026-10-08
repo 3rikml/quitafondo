@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { createOverrideBuffer } from "@/lib/image/alphaCompose";
+import { createOverrideBuffer, upsampleOverrides } from "@/lib/image/alphaCompose";
 import {
   canvasToSourceCoords,
   createSmartBrushScratch,
@@ -40,6 +40,8 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
   const [version, setVersion] = useState(0);
 
   const overridesByJobIdRef = useRef<Map<string, Int16Array>>(new Map());
+  // The photo size each buffer was made for.
+  const overrideSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map());
   // One flood-fill workspace is enough even across jobs: it self-resizes to
   // the current pixel count and is fully reset after every dab.
   const smartScratchRef = useRef(createSmartBrushScratch(0));
@@ -53,14 +55,24 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
     []
   );
 
-  /** Hands EditorCanvas this job's buffer, creating it only if the job was never retouched. */
+  /**
+   * Hands EditorCanvas this job's buffer, creating it only if the job was
+   * never retouched. If the photo came back an exact multiple of its old size
+   * ("Mejorar calidad"), the strokes are enlarged with it instead of lost.
+   */
   const getOverrideBuffer = useCallback(
-    (pixelCount: number) => {
+    (width: number, height: number) => {
+      const pixelCount = width * height;
       if (!selectedJobId) return createOverrideBuffer(pixelCount);
       const existing = overridesByJobIdRef.current.get(selectedJobId);
       if (existing && existing.length === pixelCount) return existing;
-      const created = createOverrideBuffer(pixelCount);
+      const previous = overrideSizesRef.current.get(selectedJobId);
+      const factor = previous ? width / previous.width : 0;
+      const scalable =
+        existing && previous && Number.isInteger(factor) && factor > 1 && previous.height * factor === height;
+      const created = scalable ? upsampleOverrides(existing, previous.width, previous.height, factor) : createOverrideBuffer(pixelCount);
       overridesByJobIdRef.current.set(selectedJobId, created);
+      overrideSizesRef.current.set(selectedJobId, { width, height });
       return created;
     },
     [selectedJobId]

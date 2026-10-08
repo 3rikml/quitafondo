@@ -26,3 +26,18 @@ export function composeFinalAlpha(
   }
   return result;
 }
+
+/**
+ * Retouch overrides painted on a `width`×`height` photo, carried over to the
+ * same photo enlarged an integer `factor` times (each value fills a
+ * factor×factor block), so "Mejorar calidad" keeps the strokes.
+ */
+export function upsampleOverrides(buffer: Int16Array, width: number, height: number, factor: number): Int16Array {
+  const outWidth = width * factor;
+  const out = new Int16Array(outWidth * height * factor);
+  for (let y = 0; y < height * factor; y++) {
+    const sourceRow = Math.floor(y / factor) * width;
+    for (let x = 0; x < outWidth; x++) out[y * outWidth + x] = buffer[sourceRow + Math.floor(x / factor)];
+  }
+  return out;
+}

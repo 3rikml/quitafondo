@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { composeFinalAlpha, createOverrideBuffer, NO_OVERRIDE } from "../alphaCompose";
+import { composeFinalAlpha, createOverrideBuffer, NO_OVERRIDE, upsampleOverrides } from "../alphaCompose";
 
 describe("createOverrideBuffer", () => {
   it("fills a new buffer with NO_OVERRIDE for every pixel", () => {
@@ -30,5 +30,17 @@ describe("composeFinalAlpha", () => {
     overrides[2] = 255; // restored to fully opaque
     const result = composeFinalAlpha(modelAlpha, overrides);
     expect(Array.from(result)).toEqual([0, 0, 255]);
+  });
+});
+
+describe("upsampleOverrides", () => {
+  it("fills a 2x2 block with each override", () => {
+    const buf = Int16Array.from([1, NO_OVERRIDE, 255, 0]); // 2x2
+    expect(Array.from(upsampleOverrides(buf, 2, 2, 2))).toEqual([
+      1, 1, NO_OVERRIDE, NO_OVERRIDE,
+      1, 1, NO_OVERRIDE, NO_OVERRIDE,
+      255, 255, 0, 0,
+      255, 255, 0, 0,
+    ]);
   });
 });

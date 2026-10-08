@@ -5,6 +5,7 @@ import type { ImageJob } from "@/lib/types";
 import { DEFAULT_BACKGROUND, DEFAULT_CANVAS, DEFAULT_EXPORT } from "@/lib/types";
 import { removeImageBackground } from "@/hooks/useBackgroundRemoval";
 import { downscaleIfHuge } from "@/lib/image/downscale";
+import { scaleCanvasConfig } from "@/lib/image/canvasFit";
 import { t } from "@/lib/i18n";
 import { isBackgroundRemovalSupported, validateImageFile } from "@/lib/image/fileValidation";
 import { toPersistedJob, fromPersistedJob } from "@/lib/storage/schema";
@@ -250,8 +251,13 @@ export function useBatchQueue() {
    * message (and changes nothing) if the new file fails validation;
    * returns null on success.
    */
+  /**
+   * Swaps a job's photo and re-runs background removal; every setting stays.
+   * `sourceScale` says the new photo is the old one enlarged (e.g. 2 after
+   * "Mejorar calidad"), so the crop and offsets in pixels are scaled to match.
+   */
   const replaceJobFile = useCallback(
-    (id: string, file: File) => {
+    (id: string, file: File, sourceScale = 1) => {
       const validationError = validateImageFile(file);
       if (validationError) return validationError;
 
@@ -263,6 +269,7 @@ export function useBatchQueue() {
           j.id === id
             ? {
                 ...j,
+                canvas: sourceScale === 1 ? j.canvas : scaleCanvasConfig(j.canvas, sourceScale),
                 fileName: file.name,
                 originalUrl: URL.createObjectURL(file),
                 status: "pending",

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Replace, Sparkles } from "lucide-react";
 import type { ImageJob } from "@/lib/types";
-import { MAX_UPSCALE_PIXELS, upscaleImage } from "@/hooks/useImageUpscale";
+import { MAX_UPSCALE_PIXELS, UPSCALE_FACTOR, upscaleImage } from "@/hooks/useImageUpscale";
 import { Button } from "@/components/ui/button";
 import { PanelHint, PanelSection } from "@/components/editor-ui/PanelSection";
 import { useT } from "@/lib/i18n";
@@ -11,7 +11,7 @@ import { useT } from "@/lib/i18n";
 interface SourceImagePanelProps {
   job: ImageJob;
   /** Swaps the job's source photo and re-runs background removal; returns a validation error, if any. */
-  replaceJobFile: (id: string, file: File) => string | null;
+  replaceJobFile: (id: string, file: File, sourceScale?: number) => string | null;
 }
 
 /** Replace the source photo, or upscale it with AI and re-run background removal on the result. */
@@ -48,7 +48,7 @@ export function SourceImagePanel({ job, replaceJobFile }: SourceImagePanelProps)
   /**
    * Upscales the pre-removal original (not the cutout — see `upscaleImage`)
    * and feeds the sharper photo back through `replaceJobFile`, which keeps
-   * every background/canvas/export setting untouched.
+   * every background/canvas/export setting (crop and offsets scaled 2x).
    */
   async function handleImproveQuality() {
     if (!job.originalUrl || isUpscaling) return;
@@ -59,7 +59,7 @@ export function SourceImagePanel({ job, replaceJobFile }: SourceImagePanelProps)
       const originalBlob = await fetch(job.originalUrl).then((r) => r.blob());
       const upscaledBlob = await upscaleImage(originalBlob, setUpscaleProgress);
       const upscaledFile = new File([upscaledBlob], job.fileName, { type: upscaledBlob.type });
-      setUpscaleError(replaceJobFile(job.id, upscaledFile));
+      setUpscaleError(replaceJobFile(job.id, upscaledFile, UPSCALE_FACTOR));
     } catch (error) {
       setUpscaleError(error instanceof Error ? error.message : t("source.improveFailed"));
     } finally {

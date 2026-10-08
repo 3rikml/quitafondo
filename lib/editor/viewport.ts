@@ -33,3 +33,12 @@ export function zoomAt(view: Viewport, nextZoom: number, pointX: number, pointY:
 export function wheelZoomFactor(deltaY: number): number {
   return Math.exp(-deltaY * 0.0015);
 }
+
+/**
+ * On-screen size of a `width`×`height` image shown whole inside a
+ * `maxWidth`×`maxHeight` area: shrunk to fit, never enlarged past 100%.
+ */
+export function containSize(width: number, height: number, maxWidth: number, maxHeight: number) {
+  const scale = Math.min(1, maxWidth / width, maxHeight / height);
+  return { width: width * scale, height: height * scale };
+}

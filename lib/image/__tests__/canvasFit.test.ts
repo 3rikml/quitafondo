@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  scaleCanvasConfig,
   canvasPointToSource,
   computeCenteredFit, computeContainFit, getCropClipRect, resolveCanvasLayout } from "../canvasFit";
-import type { CanvasConfig } from "../../types";
+import { DEFAULT_CANVAS, type CanvasConfig } from "../../types";
 
 describe("computeCenteredFit", () => {
   it("centers a subject that already fills the source image, no margin", () => {
@@ -274,5 +275,25 @@ describe("canvasPointToSource", () => {
     const back = canvasPointToSource(canvasX, canvasY, rotated);
     expect(back.x).toBeCloseTo(source.x, 6);
     expect(back.y).toBeCloseTo(source.y, 6);
+  });
+});
+
+describe("scaleCanvasConfig", () => {
+  const crop = { x: 10, y: 20, width: 100, height: 50 };
+
+  it("doubles the crop and, on the photo-sized canvas, the offsets", () => {
+    const scaled = scaleCanvasConfig({ ...DEFAULT_CANVAS, cropBox: crop, offsetX: 30, offsetY: -8 }, 2);
+    expect(scaled.cropBox).toEqual({ x: 20, y: 40, width: 200, height: 100 });
+    expect([scaled.offsetX, scaled.offsetY]).toEqual([60, -16]);
+  });
+
+  it("keeps the offsets on a fixed-size canvas", () => {
+    const square: CanvasConfig = { ...DEFAULT_CANVAS, preset: "square", widthPx: 1080, heightPx: 1080, offsetX: 30, offsetY: 5 };
+    const scaled = scaleCanvasConfig(square, 2);
+    expect([scaled.offsetX, scaled.offsetY]).toEqual([30, 5]);
+  });
+
+  it("leaves a missing crop alone", () => {
+    expect(scaleCanvasConfig(DEFAULT_CANVAS, 2).cropBox).toBe(DEFAULT_CANVAS.cropBox);
   });
 });

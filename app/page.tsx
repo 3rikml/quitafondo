@@ -62,6 +62,18 @@ export default function Home() {
 
   const canvasHandleRef = useRef<EditorCanvasHandle>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
+  // The room the photo may take on the stage, kept current as the window or panels change.
+  const [stageArea, setStageArea] = useState<HTMLDivElement | null>(null);
+  const [fitArea, setFitArea] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    if (!stageArea) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setFitArea((current) => (current?.width === width && current.height === height ? current : { width, height }));
+    });
+    observer.observe(stageArea);
+    return () => observer.disconnect();
+  }, [stageArea]);
   // State right before the current brush stroke, recorded as one undo step on pointerup.
   const strokeStartRef = useRef<HistoryEntry | null>(null);
 
@@ -427,6 +439,7 @@ export default function Home() {
               {editing && selectedJob?.cutoutBlob ? (
                 <>
                   <div
+                    ref={setStageArea}
                     onPointerDown={handleCanvasPointerDown}
                     onPointerMove={handleCanvasPointerMove}
                     onPointerUp={handleCanvasPointerUp}
@@ -457,6 +470,7 @@ export default function Home() {
                         compareSplit={compareSplit}
                         eraseMask={erasing ? eraser.mask : null}
                         eraseMaskVersion={eraser.version}
+                        fitArea={fitArea}
                       />
                       {compareSplit !== null && <CompareOverlay split={compareSplit} onSplitChange={setCompareSplit} />}
                       {showSubjectHandles && subject.handleRect && (

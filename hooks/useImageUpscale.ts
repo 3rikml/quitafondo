@@ -8,6 +8,9 @@ import { runAiTask } from "@/lib/ai/client";
  */
 export const MAX_UPSCALE_PIXELS = 1_000_000;
 
+/** The model enlarges 2x (must match the worker's `UPSCALE_FACTOR`). */
+export const UPSCALE_FACTOR = 2;
+
 /**
  * Runs a 2x AI super-resolution pass (Swin2SR, in the AI worker, tile by
  * tile) over `file` and returns the result as a PNG blob. Intended for the

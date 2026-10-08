@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { containSize } from "@/lib/editor/viewport";
 import type { BackgroundConfig, CanvasConfig } from "@/lib/types";
 import { computeAlphaBoundingBox, type BoundingBox } from "@/lib/image/boundingBox";
 import { resolveCanvasLayout, type FitResult } from "@/lib/image/canvasFit";
@@ -64,7 +65,7 @@ interface EditorCanvasProps {
    * buffers (keyed by job id) so that switching images and coming back keeps
    * the earlier strokes.
    */
-  getOverrideBuffer: (pixelCount: number) => Int16Array;
+  getOverrideBuffer: (width: number, height: number) => Int16Array;
   /** Bumped by the parent whenever a retouch stroke mutates the override buffer, to force a redraw. */
   retouchVersion: number;
   /**
@@ -87,6 +88,12 @@ interface EditorCanvasProps {
   eraseMask?: Int16Array | null;
   /** Bumped whenever `eraseMask` is painted into, to redraw the overlay. */
   eraseMaskVersion?: number;
+  /**
+   * Room the canvas may take on screen; the canvas is shrunk to fit it whole.
+   * CSS alone (max-height: 100%) cannot do it: the canvas's parent has no
+   * set height, so a tall photo would overflow and be cut off.
+   */
+  fitArea?: { width: number; height: number } | null;
 }
 
 export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
@@ -101,6 +108,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
     compareSplit = null,
     eraseMask = null,
     eraseMaskVersion = 0,
+    fitArea = null,
   },
   ref
 ) {
@@ -145,7 +153,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
 
       // Never create the buffer here: the parent may already hold this job's
       // earlier retouch strokes, and overwriting them would discard them.
-      overrideAlphaRef.current = getOverrideBuffer(bitmap.width * bitmap.height);
+      overrideAlphaRef.current = getOverrideBuffer(bitmap.width, bitmap.height);
 
       render();
     });
@@ -199,6 +207,18 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [background, canvasConfig, retouchVersion, compareSplit !== null]);
 
+  // Read through a ref: render() also runs from the cutout's async decode,
+  // whose closure would otherwise see the area from before the decode began.
+  const fitAreaRef = useRef(fitArea);
+  // The stage was resized: refit the canvas, and let overlays re-measure it.
+  useEffect(() => {
+    fitAreaRef.current = fitArea;
+    if (!bitmapRef.current) return; // nothing drawn yet
+    applyDisplaySize();
+    onRender?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitArea?.width, fitArea?.height]);
+
   function render() {
     const canvas = canvasRef.current;
     const bitmap = bitmapRef.current;
@@ -236,7 +256,17 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
 
     renderComparison(width, height, fit);
     renderEraseOverlay();
+    applyDisplaySize();
     onRender?.();
+  }
+
+  function applyDisplaySize() {
+    const canvas = canvasRef.current;
+    const area = fitAreaRef.current;
+    if (!canvas || !area || canvas.width === 0 || canvas.height === 0) return;
+    const size = containSize(canvas.width, canvas.height, area.width, area.height);
+    canvas.style.width = `${size.width}px`;
+    canvas.style.height = `${size.height}px`;
   }
 
   /** Red overlay of the magic eraser strokes, drawn with the subject's own fit. */
