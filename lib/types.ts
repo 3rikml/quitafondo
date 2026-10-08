@@ -8,6 +8,16 @@ export type BackgroundConfig =
   /** The original photo itself, blurred (0-100), behind the subject — a "portrait mode" look. */
   | { kind: "blur"; amount: number };
 
+/** Refinement of the model's cutout edge, applied before manual retouch. */
+export interface EdgeConfig {
+  /** Softening radius in source pixels (0-10). */
+  feather: number;
+  /** Grow (+) or shrink (-) the subject by this many source pixels (-5..5). */
+  shift: number;
+  /** Remove the old background's color from semi-transparent edge pixels. */
+  decontaminate: boolean;
+}
+
 export type ShadowKind = "none" | "soft" | "contact";
 
 export interface ShadowConfig {
@@ -51,6 +61,7 @@ export interface CanvasConfig {
   cropBox?: BoundingBox | null;
   /** Drawn beneath the subject, inside the same fit (so it rotates/scales with it). */
   shadow: ShadowConfig;
+  edge: EdgeConfig;
 }
 
 export type ExportFormat = "png" | "jpg" | "webp";
@@ -90,6 +101,7 @@ export const DEFAULT_CANVAS: CanvasConfig = {
   rotationDeg: 0,
   cropBox: null,
   shadow: { kind: "none", intensity: 50 },
+  edge: { feather: 0, shift: 0, decontaminate: true },
 };
 
 export const DEFAULT_EXPORT: ExportConfig = { format: "png", quality: 92 };

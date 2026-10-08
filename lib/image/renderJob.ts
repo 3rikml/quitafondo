@@ -2,6 +2,7 @@ import type { BackgroundConfig, CanvasConfig, ExportConfig } from "../types";
 import { computeAlphaBoundingBox } from "./boundingBox";
 import { resolveCanvasLayout } from "./canvasFit";
 import { composeCutoutWithRetouch } from "./composeCutout";
+import { refineCutout } from "./edgeRefine";
 import { paintBackground } from "./drawBackground";
 import { drawSubject } from "./drawSubject";
 import { MIME_BY_FORMAT, flattenOnWhite, requiresFlattening } from "./exportFormat";
@@ -31,12 +32,12 @@ export async function renderJobToBlob(
 
   try {
     const sourcePixels = readBitmapPixels(bitmap);
-    // The original is needed for "Restaurar" color repair and as the source
-    // of a blurred-photo background; skip the decode when neither applies.
-    const needsOriginal = Boolean(retouchOverride) || background.kind === "blur";
+    // The original is needed for "Restaurar" color repair, edge halo removal
+    // and a blurred-photo background; skip the decode when none applies.
+    const needsOriginal = Boolean(retouchOverride) || background.kind === "blur" || canvasConfig.edge.decontaminate;
     const originalPixels = needsOriginal && originalUrl ? await loadOriginalPixels(originalUrl) : null;
     const composedPixels = composeCutoutWithRetouch(
-      sourcePixels,
+      refineCutout(sourcePixels, originalPixels, canvasConfig.edge),
       originalPixels,
       retouchOverride ?? null
     );

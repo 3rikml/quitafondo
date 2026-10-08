@@ -74,6 +74,7 @@ describe("resolveCanvasLayout", () => {
     rotationDeg: 0,
     cropBox: null,
     shadow: { kind: "none", intensity: 50 },
+    edge: { feather: 0, shift: 0, decontaminate: true },
   };
 
   it("uses the source size and an identity transform for the original preset", () => {

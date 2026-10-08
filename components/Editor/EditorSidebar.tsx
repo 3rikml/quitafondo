@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { IconButton } from "@/components/IconButton";
 import { BackgroundPanel } from "@/components/Editor/BackgroundPanel";
 import { CanvasSizePanel } from "@/components/Editor/CanvasSizePanel";
+import { EdgePanel } from "@/components/Editor/EdgePanel";
 import { ExportPanel } from "@/components/Editor/ExportPanel";
 import { RetouchToolbar, type RetouchToolbarProps } from "@/components/Editor/RetouchToolbar";
 import { ShadowPanel } from "@/components/Editor/ShadowPanel";
@@ -63,6 +64,10 @@ export function EditorSidebar({
           value={job.canvas.shadow}
           onChange={(shadow) => updateJob(job.id, { canvas: { ...job.canvas, shadow } })}
         />
+      </Card>
+
+      <Card size="sm" className="p-3">
+        <EdgePanel value={job.canvas.edge} onChange={(edge) => updateJob(job.id, { canvas: { ...job.canvas, edge } })} />
       </Card>
 
       <Card size="sm" className="p-3">
