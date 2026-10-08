@@ -12,6 +12,7 @@ import { useEditorHistory, type HistoryEntry } from "@/hooks/useEditorHistory";
 import { useCropTool } from "@/hooks/useCropTool";
 import { useSubjectTransform } from "@/hooks/useSubjectTransform";
 import { magicStatusText, useMagicSelect } from "@/hooks/useMagicSelect";
+import { eraserStatusText, useMagicEraser } from "@/hooks/useMagicEraser";
 import { canvasToSourceCoords } from "@/components/Editor/RetouchToolbar";
 import { ImageDropzone } from "@/components/ImageDropzone";
 import { BatchQueue } from "@/components/BatchQueue";
@@ -25,7 +26,8 @@ import { useT } from "@/lib/i18n";
 
 export default function Home() {
   const t = useT();
-  const { jobs, addFiles, updateJob, retryJob, removeJob, replaceJobFile, isSupported } = useBatchQueue();
+  const { jobs, addFiles, updateJob, retryJob, removeJob, replaceJobFile, replaceJobImages, isSupported } =
+    useBatchQueue();
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const selectedJob = useMemo(() => jobs.find((job) => job.id === selectedJobId) ?? null, [jobs, selectedJobId]);
 
@@ -52,6 +54,10 @@ export default function Home() {
   const editorDeps = { selectedJob, updateJob, canvasHandleRef, canvasWrapperRef, canvasRenderTick, history };
   const crop = useCropTool(editorDeps);
   const subject = useSubjectTransform(editorDeps);
+  const eraser = useMagicEraser({ selectedJob, canvasHandleRef, replaceJobImages });
+  const erasing = retouch.active && retouch.tool === "eraser";
+  // True while the pointer is down painting eraser strokes.
+  const eraserStrokeRef = useRef(false);
   const magic = useMagicSelect({
     selectedJob,
     active: retouch.active && retouch.tool === "magic",
@@ -142,6 +148,12 @@ export default function Home() {
   function handleCanvasPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (crop.active || !selectedJob) return;
     const canvas = e.currentTarget.querySelector("canvas");
+    if (erasing) {
+      if (!canvas) return;
+      eraserStrokeRef.current = true;
+      eraser.paintAt(canvas, e.clientX, e.clientY, retouch.toolbarProps.brushSize);
+      return;
+    }
     if (retouch.active && retouch.tool === "magic") {
       const fit = canvasHandleRef.current?.getFit();
       if (!canvas || !fit) return;
@@ -162,6 +174,10 @@ export default function Home() {
   function handleCanvasPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const canvas = e.currentTarget.querySelector("canvas");
     if (!canvas) return;
+    if (erasing) {
+      if (eraserStrokeRef.current) eraser.paintAt(canvas, e.clientX, e.clientY, retouch.toolbarProps.brushSize);
+      return;
+    }
     if (retouch.active) {
       if (strokeStartRef.current) retouch.paintAt(canvas, e.clientX, e.clientY);
       return;
@@ -170,6 +186,7 @@ export default function Home() {
   }
 
   function handleCanvasPointerUp() {
+    eraserStrokeRef.current = false;
     const strokeStart = strokeStartRef.current;
     strokeStartRef.current = null;
     if (strokeStart && selectedJob) history.record(selectedJob.id, strokeStart);
@@ -232,6 +249,7 @@ export default function Home() {
     (id: string) => {
       retouch.overridesByJobIdRef.current.delete(id);
       history.forget(id);
+      eraser.forget(id);
       setSelectedJobId((current) => (current === id ? null : current));
       removeJob(id);
     },
@@ -332,6 +350,8 @@ export default function Home() {
                     retouchVersion={retouch.version}
                     onRender={() => setCanvasRenderTick((t) => t + 1)}
                     compareSplit={compareSplit}
+                    eraseMask={erasing ? eraser.mask : null}
+                    eraseMaskVersion={eraser.version}
                   />
                   {compareSplit !== null && <CompareOverlay split={compareSplit} onSplitChange={setCompareSplit} />}
                   {showSubjectHandles && subject.handleRect && (
@@ -378,6 +398,15 @@ export default function Home() {
                   statusText: magicStatusText(magic.status),
                   sizes: magic.sizes,
                   onSizeChange: magic.chooseSize,
+                },
+                eraser: {
+                  canErase: eraser.hasMask,
+                  canUndo: eraser.canUndo,
+                  busy: eraser.status.kind === "working",
+                  statusText: eraserStatusText(eraser.status),
+                  onErase: eraser.erase,
+                  onClear: eraser.clear,
+                  onUndo: eraser.undo,
                 },
               }}
               getRenderedPixelBuffer={() => canvasHandleRef.current?.getRenderedPixelBuffer() ?? null}

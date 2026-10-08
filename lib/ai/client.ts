@@ -1,18 +1,16 @@
-import type { AiTask, MagicPoint, WorkerRequest, WorkerResponse } from "./protocol";
-
-type JobRequest = Exclude<WorkerRequest, { type: "force-wasm" }>;
+import { taskOf, type AiTask, type JobRequest, type MagicPoint, type WorkerRequest, type WorkerResponse } from "./protocol";
 
 interface PendingRequest {
   /** Kept to replay the job on a fresh worker after a WebGPU failure. */
   message: JobRequest;
-  resolve: (result: Extract<WorkerResponse, { type: "done" | "mask" }>) => void;
+  resolve: (result: Answer) => void;
   reject: (error: Error) => void;
   onProgress?: (ratio: number) => void;
 }
 
-const TASKS: AiTask[] = ["segment", "upscale", "sam"];
+type Answer = Extract<WorkerResponse, { type: "done" | "mask" | "inpainted" }>;
 
-const taskOf = (message: JobRequest): AiTask => (message.type === "sam" ? "sam" : message.task);
+const TASKS: AiTask[] = ["segment", "upscale", "sam", "inpaint"];
 
 /**
  * Remembers, per task, a GPU that failed mid-inference, so later visits skip
@@ -96,10 +94,7 @@ function getWorker(): Worker {
   return created;
 }
 
-function submit(
-  build: (id: number) => JobRequest,
-  onProgress?: (ratio: number) => void
-): Promise<Extract<WorkerResponse, { type: "done" | "mask" }>> {
+function submit(build: (id: number) => JobRequest, onProgress?: (ratio: number) => void): Promise<Answer> {
   return new Promise((resolve, reject) => {
     const message = build(nextId++);
     pending.set(message.id, { message, resolve, reject, onProgress });
@@ -133,4 +128,22 @@ export async function runMagicSelect(
   const response = await submit((id) => ({ type: "sam", id, key, image, points }), onProgress);
   if (response.type !== "mask") throw new Error("Respuesta inesperada del proceso de IA.");
   return { masks: response.masks, best: response.best, width: response.width, height: response.height };
+}
+
+/**
+ * Magic eraser: fills what `mask` marks (non-zero, one byte per photo pixel)
+ * and resolves with the cleaned photo and the cutout recolored from it.
+ */
+export async function runInpaint(
+  image: Blob,
+  cutout: Blob,
+  mask: Uint8Array,
+  width: number,
+  height: number,
+  onProgress?: (ratio: number) => void
+): Promise<{ original: Blob; cutout: Blob }> {
+  // The mask is copied, not transferred: a pending job may be replayed on a new worker.
+  const response = await submit((id) => ({ type: "inpaint", id, image, cutout, mask, width, height }), onProgress);
+  if (response.type !== "inpainted") throw new Error("Respuesta inesperada del proceso de IA.");
+  return { original: response.original, cutout: response.cutout };
 }

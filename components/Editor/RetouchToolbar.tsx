@@ -1,6 +1,6 @@
 "use client";
 
-import { Eraser, MousePointerClick, PaintbrushVertical, Sparkles, Wand2 } from "lucide-react";
+import { Bandage, Eraser, MousePointerClick, PaintbrushVertical, Sparkles, Trash2, Undo2, Wand2 } from "lucide-react";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 import { canvasPointToSource, type FitResult } from "@/lib/image/canvasFit";
 
@@ -11,8 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { useT } from "@/lib/i18n";
 
 export type RetouchMode = "erase" | "restore";
-/** "brush": paint erase/restore strokes. "magic": click an object to remove or add it back. */
-export type RetouchTool = "brush" | "magic";
+/**
+ * "brush": paint erase/restore strokes on the cutout. "magic": click an object
+ * to remove or add it back. "eraser": paint over something in the photo and
+ * let the AI fill it in.
+ */
+export type RetouchTool = "brush" | "magic" | "eraser";
 
 export interface RetouchToolbarProps {
   active: boolean;
@@ -44,6 +48,16 @@ export interface RetouchToolbarProps {
     sizes: { count: number; index: number } | null;
     onSizeChange: (index: number) => void;
   };
+  /** Magic eraser actions and status. */
+  eraser: {
+    canErase: boolean;
+    canUndo: boolean;
+    busy: boolean;
+    statusText: string | null;
+    onErase: () => void;
+    onClear: () => void;
+    onUndo: () => void;
+  };
 }
 
 export function RetouchToolbar({
@@ -62,6 +76,7 @@ export function RetouchToolbar({
   tool,
   onToolChange,
   magic,
+  eraser,
 }: RetouchToolbarProps) {
   const t = useT();
   const selectBrush = (brushMode: RetouchMode) => {
@@ -84,7 +99,7 @@ export function RetouchToolbar({
 
       {active && (
         <>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5">
             <Button
               size="sm"
               variant={tool === "brush" && mode === "erase" ? "default" : "outline"}
@@ -105,7 +120,45 @@ export function RetouchToolbar({
               <Sparkles className="size-4" />
               {t("retouch.magic")}
             </Button>
+            <Button size="sm" variant={tool === "eraser" ? "default" : "outline"} onClick={() => onToolChange("eraser")}>
+              <Bandage className="size-4" />
+              {t("retouch.eraser")}
+            </Button>
           </div>
+
+          {tool === "eraser" && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-muted-foreground">{t("eraser.hint")}</p>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">{t("retouch.brushSize", { value: brushSize })}</span>
+                <Slider
+                  min={4}
+                  max={120}
+                  step={1}
+                  value={[brushSize]}
+                  aria-label={t("shortcut.brushSize")}
+                  onValueChange={(values) => onBrushSizeChange(Array.isArray(values) ? values[0] : (values as number))}
+                />
+              </div>
+              <Button size="sm" onClick={eraser.onErase} disabled={!eraser.canErase || eraser.busy}>
+                <Bandage />
+                {t("eraser.apply")}
+              </Button>
+              <div className="grid grid-cols-2 gap-1.5">
+                <Button size="sm" variant="ghost" onClick={eraser.onClear} disabled={!eraser.canErase || eraser.busy}>
+                  <Trash2 />
+                  {t("eraser.clear")}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={eraser.onUndo} disabled={!eraser.canUndo || eraser.busy}>
+                  <Undo2 />
+                  {t("eraser.undo")}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground" aria-live="polite">
+                {eraser.statusText ?? t("eraser.firstUse")}
+              </p>
+            </div>
+          )}
 
           {tool === "magic" && (
             <div className="flex flex-col gap-2">

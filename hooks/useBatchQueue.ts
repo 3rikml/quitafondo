@@ -282,5 +282,26 @@ export function useBatchQueue() {
     [pump]
   );
 
-  return { jobs, addFiles, updateJob, retryJob, removeJob, replaceJobFile, isSupported };
+  /**
+   * Swaps a finished job's photo and cutout for edited versions of the same
+   * size (e.g. after the magic eraser) without re-running background
+   * removal; every other setting stays. The photo is what gets persisted.
+   */
+  const replaceJobImages = useCallback(
+    (id: string, original: Blob, cutoutBlob: Blob) => {
+      filesById.current.set(id, original);
+      const originalUrl = URL.createObjectURL(original);
+      setJobs((prev) =>
+        prev.map((job) => {
+          if (job.id !== id) return job;
+          if (job.originalUrl && job.originalUrl !== originalUrl) URL.revokeObjectURL(job.originalUrl);
+          return { ...job, originalUrl, cutoutBlob };
+        })
+      );
+      scheduleSave(id);
+    },
+    [scheduleSave]
+  );
+
+  return { jobs, addFiles, updateJob, retryJob, removeJob, replaceJobFile, replaceJobImages, isSupported };
 }

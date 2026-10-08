@@ -18,6 +18,8 @@ Tus fotos **nunca salen de tu equipo**. El modelo de IA se descarga una sola vez
 - **Reencuadrar y centrar el sujeto**, con presets (cuadrado, retrato 4:5, historia 9:16) o un tamaño personalizado.
 - **Recorte**, **mover, redimensionar y rotar** el sujeto directamente sobre el lienzo.
 - **Selección mágica con un clic** (SlimSAM): haz clic en un objeto para quitarlo del recorte o agregarlo de vuelta, y elige entre 3 tamaños de selección.
+- **Borrador mágico** (LaMa): pinta sobre algo de la foto —una persona al fondo, un logo, una mancha— y la IA lo borra rellenando el hueco.
+- **Luz y color**: brillo, contraste, saturación y temperatura del sujeto, y un botón para **armonizarlo con el fondo** elegido.
 - **Bordes finos**: suavizar, contraer/expandir y quitar el halo de color del fondo original.
 - **Retoque manual** (borrar/restaurar) con pincel, incluyendo un modo "inteligente" por flood-fill.
 - **Mejora de resolución (upscaling) 2x** con Swin2SR en el mismo worker, por mosaicos, sin congelar la interfaz.
@@ -69,6 +71,7 @@ Imagen ──► Web Worker (lib/ai/ai.worker.ts)
 | [IS-Net general-use](https://huggingface.co/imgly/isnet-general-onnx) | MIT (pesos originales Apache-2.0) | Apple Silicon y equipos sin WebGPU |
 | [Swin2SR lightweight x2](https://huggingface.co/Xenova/swin2SR-lightweight-x2-64) | Apache-2.0 | "Mejorar calidad" (fotos de hasta ~1 MP) |
 | [SlimSAM](https://huggingface.co/Xenova/slimsam-77-uniform) | Apache-2.0 | Selección mágica con un clic |
+| [LaMa](https://huggingface.co/Carve/LaMa-ONNX) | Apache-2.0 | Borrador mágico (~208 MB, CPU) |
 
 ## Stack técnico
 
@@ -105,6 +108,8 @@ Your photos **never leave your device**. The AI model is downloaded once from Hu
 - **Soft or contact shadows** with adjustable intensity.
 - **Reframe and center** with presets (square, 4:5 portrait, 9:16 story) or a custom size; crop, move, resize and rotate on the canvas.
 - **One-click magic selection** (SlimSAM): click an object to remove it from the cutout or add it back, with 3 selection sizes to choose from.
+- **Magic eraser** (LaMa): paint over something in the photo — a person in the back, a logo, a stain — and the AI removes it, filling the gap.
+- **Light & color**: brightness, contrast, saturation and temperature of the subject, plus a button to **match it to the chosen background**.
 - **Fine edges**: soften, shrink/grow and remove the old background's color halo.
 - **Manual retouch** (erase/restore) brush with a "smart" flood-fill mode.
 - **2x upscaling** with Swin2SR in the same worker, tile by tile, without freezing the UI.
@@ -133,6 +138,7 @@ Open [http://localhost:3000](http://localhost:3000). See the commands and archit
 | [IS-Net general-use](https://huggingface.co/imgly/isnet-general-onnx) | MIT (original weights Apache-2.0) | Apple Silicon and devices without WebGPU |
 | [Swin2SR lightweight x2](https://huggingface.co/Xenova/swin2SR-lightweight-x2-64) | Apache-2.0 | "Improve quality" (photos up to ~1 MP) |
 | [SlimSAM](https://huggingface.co/Xenova/slimsam-77-uniform) | Apache-2.0 | One-click magic selection |
+| [LaMa](https://huggingface.co/Carve/LaMa-ONNX) | Apache-2.0 | Magic eraser (~208 MB, CPU) |
 
 ## Contributing
 

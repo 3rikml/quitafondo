@@ -175,6 +175,16 @@ export const es = {
   "retouch.magicPreparing": "Analizando la imagen… {percent}%",
   "retouch.magicWorking": "Seleccionando…",
   "retouch.magicError": "No se pudo usar la selección mágica: {message}",
+  "retouch.eraser": "Borrador",
+
+  "eraser.hint": "Pinta sobre lo que quieres eliminar de la foto (una persona al fondo, un logo, una mancha) y la IA lo rellena.",
+  "eraser.firstUse": "La primera vez descarga el modelo (~208 MB). Cada borrado tarda unos 10 s.",
+  "eraser.apply": "Borrar lo pintado",
+  "eraser.clear": "Limpiar trazo",
+  "eraser.undo": "Deshacer borrado",
+  "eraser.downloading": "Descargando el modelo del borrador (solo la primera vez)… {percent}%",
+  "eraser.working": "Borrando… (unos 10 segundos)",
+  "eraser.error": "No se pudo borrar: {message}",
 
   "export.title": "Exportar",
   "export.jpgWarning": "JPG no soporta transparencia: el fondo se rellenará de blanco donde sea transparente.",

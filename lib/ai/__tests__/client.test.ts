@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll } from "vitest";
-import type { WorkerResponse, WorkerRequest } from "@/lib/ai/protocol";
+import { taskOf, type WorkerResponse, type WorkerRequest } from "@/lib/ai/protocol";
 
 /** Stands in for ai.worker.ts: reports progress, then answers with a fake result. */
 class FakeWorker {
@@ -19,7 +19,7 @@ class FakeWorker {
       return;
     }
     const { id, image } = request;
-    const task = request.type === "sam" ? "sam" : request.task;
+    const task = taskOf(request);
     queueMicrotask(async () => {
       const content = await image.text();
       if (request.type === "sam") {

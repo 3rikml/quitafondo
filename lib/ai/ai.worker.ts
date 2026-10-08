@@ -9,22 +9,39 @@ import {
   type Processor,
   type Tensor,
 } from "@huggingface/transformers";
+// The exact entry Transformers.js uses, so both share one ONNX Runtime
+// instance and the WASM binaries it already configured.
+import * as ort from "onnxruntime-web/webgpu";
 import {
   COMPATIBLE_MODEL,
   DOWNLOAD_PROGRESS_SHARE,
   HIGH_QUALITY_MODEL,
+  INPAINT_MODEL_BYTES,
+  INPAINT_MODEL_URL,
   MIN_STORAGE_BUFFERS_PER_SHADER_STAGE,
   SAM_MODELS,
   UPSCALE_MODELS,
   type AiDevice,
   type AiModel,
   type AiTask,
+  type JobRequest,
   type MagicPoint,
   type WorkerRequest,
   type WorkerResponse,
+  taskOf,
 } from "./protocol";
 import { computeTiles, pasteTile } from "./tiling";
 import { rankMasks } from "./samMask";
+import {
+  INPAINT_SIZE,
+  fromOutputTensor,
+  inpaintRegion,
+  maskBounds,
+  toImageTensor,
+  toMaskTensor,
+  withAlphaOf,
+} from "./inpaintRegion";
+import { featherAlpha, shiftEdge } from "../image/edgeRefine";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -53,7 +70,13 @@ const UPSCALE_OVERLAP = 16;
 const UPSCALE_FACTOR = 2;
 
 /** Requests waiting on a model download, per task; each of them sees its progress. */
-const awaitingModel: Record<AiTask, Set<number>> = { segment: new Set(), upscale: new Set(), sam: new Set() };
+const awaitingModel: Record<AiTask, Set<number>> = {
+  segment: new Set(),
+  upscale: new Set(),
+  sam: new Set(),
+  inpaint: new Set(),
+};
+const INPAINT_BACKEND: Backend = { device: "wasm", model: { id: INPAINT_MODEL_URL, dtype: "fp32" } };
 const loaded = new Map<AiTask, Promise<Loaded<unknown>>>();
 /** Tasks whose WebGPU run failed before (told by the client): WASM only. */
 const wasmOnlyTasks = new Set<AiTask>();
@@ -73,6 +96,7 @@ async function getAdapter(task: AiTask): Promise<GpuAdapterLike | null> {
 }
 
 function wasmBackend(task: AiTask): Backend {
+  if (task === "inpaint") return INPAINT_BACKEND;
   if (task === "upscale") return { device: "wasm", model: UPSCALE_MODELS.wasm };
   if (task === "sam") return { device: "wasm", model: SAM_MODELS.wasm };
   return { device: "wasm", model: COMPATIBLE_MODEL };
@@ -80,6 +104,7 @@ function wasmBackend(task: AiTask): Backend {
 
 /** The best model/device pair this browser can run for `task`, best first. */
 async function pickBackend(task: AiTask): Promise<Backend> {
+  if (task === "inpaint") return INPAINT_BACKEND; // no WebGPU kernels for its FFT layers
   const adapter = await getAdapter(task);
   if (!adapter) return wasmBackend(task);
   if (task === "upscale") return { device: "webgpu", model: UPSCALE_MODELS.webgpu };
@@ -98,6 +123,11 @@ function load(task: AiTask, { device, model }: Backend): Promise<unknown> {
   const options = { device, dtype: model.dtype, progress_callback };
   if (task === "segment") return pipeline("background-removal", model.id, options);
   if (task === "upscale") return pipeline("image-to-image", model.id, options);
+  if (task === "inpaint") {
+    return fetchModel(model.id, INPAINT_MODEL_BYTES, (ratio) => {
+      for (const id of awaitingModel.inpaint) post({ id, type: "progress", ratio: ratio * DOWNLOAD_PROGRESS_SHARE.inpaint });
+    }).then((bytes) => ort.InferenceSession.create(bytes, { executionProviders: ["wasm"] }));
+  }
   return Promise.all([
     SamModel.from_pretrained(model.id, options),
     AutoProcessor.from_pretrained(model.id, { progress_callback }),
@@ -131,6 +161,118 @@ async function getLoaded<T>(task: AiTask, id: number): Promise<Loaded<T>> {
   } finally {
     awaitingModel[task].delete(id);
   }
+}
+
+/** Downloads a model file once, reporting progress, and keeps it in Cache Storage for later visits. */
+async function fetchModel(url: string, expectedBytes: number, onProgress: (ratio: number) => void): Promise<Uint8Array> {
+  const cache = await caches.open("quitafondo-models").catch(() => null);
+  const cached = await cache?.match(url);
+  if (cached) return new Uint8Array(await cached.arrayBuffer());
+
+  const response = await fetch(url);
+  if (!response.ok || !response.body) throw new Error(`No se pudo descargar el modelo (${response.status}).`);
+  const total = Number(response.headers.get("content-length")) || expectedBytes;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    onProgress(Math.min(1, received / total));
+  }
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  await cache?.put(url, new Response(bytes, { headers: { "content-type": "application/octet-stream" } })).catch(() => {});
+  return bytes;
+}
+
+/**
+ * Erases the painted area with LaMa: the region around it (with context) is
+ * scaled to 512×512, filled, scaled back and blended in through a slightly
+ * grown, feathered copy of the mask, so only the painted area changes.
+ */
+async function inpaint(
+  session: ort.InferenceSession,
+  request: Extract<JobRequest, { type: "inpaint" }>
+): Promise<{ original: Blob; cutout: Blob }> {
+  const { width, height, mask } = request;
+  const bounds = maskBounds(mask, width, height);
+  if (!bounds) throw new Error("Pinta primero lo que quieres borrar.");
+  const region = inpaintRegion(bounds, width, height);
+  const photo = await createImageBitmap(request.image);
+
+  // Model inputs: the region of the photo, and the mask grown a little (LaMa
+  // fills best when the hole fully covers the object's soft edges).
+  const grow = Math.max(2, Math.round((4 * region.width) / INPAINT_SIZE));
+  const regionMask = new Uint8ClampedArray(region.width * region.height);
+  for (let y = 0; y < region.height; y++) {
+    for (let x = 0; x < region.width; x++) {
+      regionMask[y * region.width + x] = mask[(region.y + y) * width + region.x + x] ? 255 : 0;
+    }
+  }
+  const hole = shiftEdge(regionMask, region.width, region.height, grow);
+  const blend = featherAlpha(hole, region.width, region.height, grow);
+
+  const square = new OffscreenCanvas(INPAINT_SIZE, INPAINT_SIZE);
+  const squareCtx = square.getContext("2d")!;
+  squareCtx.drawImage(photo, region.x, region.y, region.width, region.height, 0, 0, INPAINT_SIZE, INPAINT_SIZE);
+  const imageTensor = toImageTensor(squareCtx.getImageData(0, 0, INPAINT_SIZE, INPAINT_SIZE).data);
+  const holeCanvas = new OffscreenCanvas(region.width, region.height);
+  const holeRgba = new Uint8ClampedArray(region.width * region.height * 4);
+  for (let i = 0; i < hole.length; i++) holeRgba[i * 4 + 3] = hole[i];
+  holeCanvas.getContext("2d")!.putImageData(new ImageData(holeRgba, region.width, region.height), 0, 0);
+  squareCtx.clearRect(0, 0, INPAINT_SIZE, INPAINT_SIZE);
+  squareCtx.drawImage(holeCanvas, 0, 0, INPAINT_SIZE, INPAINT_SIZE);
+  const squareMask = squareCtx.getImageData(0, 0, INPAINT_SIZE, INPAINT_SIZE).data;
+  const maskAlpha = new Uint8ClampedArray(INPAINT_SIZE * INPAINT_SIZE);
+  for (let i = 0; i < maskAlpha.length; i++) maskAlpha[i] = squareMask[i * 4 + 3];
+
+  const [imageName, maskName] = session.inputNames;
+  const results = await session.run({
+    [imageName]: new ort.Tensor("float32", imageTensor, [1, 3, INPAINT_SIZE, INPAINT_SIZE]),
+    [maskName]: new ort.Tensor("float32", toMaskTensor(maskAlpha), [1, 1, INPAINT_SIZE, INPAINT_SIZE]),
+  });
+  const output = results[session.outputNames[0]].data as Float32Array;
+
+  // Scale the filled square back to the region and blend it in through the feathered mask.
+  squareCtx.putImageData(
+    new ImageData(fromOutputTensor(output, new Uint8ClampedArray(INPAINT_SIZE * INPAINT_SIZE).fill(255)) as Uint8ClampedArray<ArrayBuffer>, INPAINT_SIZE, INPAINT_SIZE),
+    0,
+    0
+  );
+  const patch = new OffscreenCanvas(region.width, region.height);
+  const patchCtx = patch.getContext("2d")!;
+  patchCtx.imageSmoothingQuality = "high";
+  patchCtx.drawImage(square, 0, 0, region.width, region.height);
+  const patchPixels = patchCtx.getImageData(0, 0, region.width, region.height);
+  for (let i = 0; i < blend.length; i++) patchPixels.data[i * 4 + 3] = blend[i];
+  patchCtx.putImageData(patchPixels, 0, 0);
+
+  const full = new OffscreenCanvas(width, height);
+  const fullCtx = full.getContext("2d")!;
+  fullCtx.drawImage(photo, 0, 0);
+  fullCtx.drawImage(patch, region.x, region.y);
+  photo.close();
+  const original = await full.convertToBlob({ type: "image/png" });
+
+  // Same cutout alpha, colors from the cleaned photo.
+  const cutoutBitmap = await createImageBitmap(request.cutout);
+  const cutoutCanvas = new OffscreenCanvas(width, height);
+  const cutoutCtx = cutoutCanvas.getContext("2d")!;
+  cutoutCtx.drawImage(cutoutBitmap, 0, 0);
+  cutoutBitmap.close();
+  const recolored = withAlphaOf(
+    fullCtx.getImageData(0, 0, width, height).data,
+    cutoutCtx.getImageData(0, 0, width, height).data
+  );
+  cutoutCtx.putImageData(new ImageData(recolored as Uint8ClampedArray<ArrayBuffer>, width, height), 0, 0);
+  return { original, cutout: await cutoutCanvas.convertToBlob({ type: "image/png" }) };
 }
 
 async function encodePng(data: Uint8ClampedArray, width: number, height: number): Promise<Blob> {
@@ -216,14 +358,16 @@ async function samMask(
 }
 
 /** Resolves `false` when WebGPU failed mid-inference and the client must swap workers. */
-async function handle(request: Exclude<WorkerRequest, { type: "force-wasm" }>): Promise<boolean> {
-  const task: AiTask = request.type === "sam" ? "sam" : request.task;
+async function handle(request: JobRequest): Promise<boolean> {
+  const task = taskOf(request);
   const { id } = request;
   const { value, device } = await getLoaded<unknown>(task, id);
   post({ id, type: "progress", ratio: DOWNLOAD_PROGRESS_SHARE[task] });
 
   try {
-    if (request.type === "sam") {
+    if (request.type === "inpaint") {
+      post({ id, type: "inpainted", ...(await inpaint(value as ort.InferenceSession, request)) });
+    } else if (request.type === "sam") {
       const result = await samMask(value as Sam, request.key, request.image, request.points);
       post({ id, type: "mask", ...result }, result.masks.map((mask) => mask.buffer));
     } else if (request.task === "segment") {
@@ -249,7 +393,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     wasmOnlyTasks.add(request.task);
     return;
   }
-  const task: AiTask = request.type === "sam" ? "sam" : request.task;
+  const task = taskOf(request);
   // Show the download progress right away, even while queued behind another job.
   if (!loaded.has(task)) awaitingModel[task].add(request.id);
   queue = queue.then(async (healthy) => {

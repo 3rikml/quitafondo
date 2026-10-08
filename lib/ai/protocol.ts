@@ -5,8 +5,9 @@ export type AiDevice = "webgpu" | "wasm";
 /**
  * "segment": remove the background (PNG with alpha). "upscale": 2x
  * super-resolution (PNG). "sam": object mask from clicked points.
+ * "inpaint": erase what is painted on the photo and fill it in.
  */
-export type AiTask = "segment" | "upscale" | "sam";
+export type AiTask = "segment" | "upscale" | "sam" | "inpaint";
 
 /** A click for the magic selection, in source-image pixels. */
 export interface MagicPoint {
@@ -25,7 +26,20 @@ export type WorkerRequest =
    * `key` (the slow part), so only the first click on an image pays for it;
    * `points: null` just computes that embedding ahead of the first click.
    */
-  | { type: "sam"; id: number; key: string; image: Blob; points: MagicPoint[] | null };
+  | { type: "sam"; id: number; key: string; image: Blob; points: MagicPoint[] | null }
+  /**
+   * Magic eraser: fills the painted `mask` (non-zero = erase, `width × height`
+   * like the photo) and returns the cleaned photo plus the cutout recolored
+   * from it (alpha unchanged).
+   */
+  | { type: "inpaint"; id: number; image: Blob; cutout: Blob; mask: Uint8Array; width: number; height: number };
+
+export type JobRequest = Exclude<WorkerRequest, { type: "force-wasm" }>;
+
+/** Which model a job needs. */
+export function taskOf(request: JobRequest): AiTask {
+  return request.type === "run" ? request.task : request.type === "sam" ? "sam" : "inpaint";
+}
 
 export type WorkerResponse =
   | { id: number; type: "progress"; ratio: number }
@@ -36,6 +50,8 @@ export type WorkerResponse =
    * Empty when only embedding.
    */
   | { id: number; type: "mask"; masks: Uint8Array[]; best: number; width: number; height: number }
+  /** Answer to an `inpaint` request. */
+  | { id: number; type: "inpainted"; original: Blob; cutout: Blob }
   | { id: number; type: "error"; message: string }
   /**
    * WebGPU built the session but failed while running it. Once that happens
@@ -94,6 +110,16 @@ export const SAM_MODELS: Record<AiDevice, AiModel> = {
 };
 
 /**
+ * Magic eraser: LaMa (Apache-2.0), ONNX export by Carve, fixed 512×512 input,
+ * ~208 MB. CPU (WASM) only: its FFT layers have no working WebGPU kernel in
+ * ONNX Runtime Web ("Can't perform binary op on the given tensors").
+ * Downloaded with plain fetch (it is not a Transformers.js model) and kept in
+ * Cache Storage.
+ */
+export const INPAINT_MODEL_URL = "https://huggingface.co/Carve/LaMa-ONNX/resolve/main/lama_fp32.onnx";
+export const INPAINT_MODEL_BYTES = 207_962_000;
+
+/**
  * BiRefNet's largest WebGPU shader binds 11 storage buffers. Adapters below
  * that (every Apple Silicon Mac reports 10) can never run it.
  */
@@ -108,4 +134,5 @@ export const DOWNLOAD_PROGRESS_SHARE: Record<AiTask, number> = {
   segment: 0.9,
   upscale: 0.3,
   sam: 0.8,
+  inpaint: 0.7,
 };

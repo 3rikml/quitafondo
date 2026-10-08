@@ -34,6 +34,8 @@ npm run build && npm run test:e2e
 # o con tu Chrome instalado: PLAYWRIGHT_CHANNEL=chrome npm run test:e2e
 ```
 
+Detén `npm run dev` antes: Playwright reutiliza cualquier servidor en el puerto 3000, y en desarrollo no se registra el service worker, así que la prueba del modo sin conexión fallaría.
+
 - Mantén los cambios enfocados: un PR por mejora o corrección.
 - Añade o actualiza pruebas en `__tests__/` junto al código que cambies, sobre todo en `lib/` (lógica pura, fácil de probar).
 - Si tocas el lienzo o la exportación, revisa que la vista previa y la descarga sigan coincidiendo (ambas usan `lib/image/drawSubject.ts`).
@@ -47,7 +49,7 @@ npm run build && npm run test:e2e
 | `app/` | Página principal, layout, manifiesto PWA |
 | `components/Editor/` | Lienzo y paneles del editor |
 | `hooks/` | Cola de procesamiento, cliente del worker de IA, entrada global de imágenes |
-| `lib/ai/` | Web Worker de IA (quitar fondo y mejorar calidad), su protocolo y el procesado por mosaicos |
+| `lib/ai/` | Web Worker de IA (quitar fondo, mejorar calidad, selección mágica y borrador), su protocolo y la lógica pura de cada tarea |
 | `lib/image/` | Procesamiento de imagen puro (encuadre, retoque, sombras, exportación) |
 | `lib/storage/` | Persistencia en IndexedDB |
 | `public/sw.js` | Service worker para el modo sin conexión |

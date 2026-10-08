@@ -175,6 +175,16 @@ export const en: Record<MessageKey, string> = {
   "retouch.magicPreparing": "Analyzing the image… {percent}%",
   "retouch.magicWorking": "Selecting…",
   "retouch.magicError": "Magic selection failed: {message}",
+  "retouch.eraser": "Eraser",
+
+  "eraser.hint": "Paint over what you want to remove from the photo (a person in the back, a logo, a stain) and the AI fills it in.",
+  "eraser.firstUse": "The first time it downloads the model (~208 MB). Each erase takes about 10 s.",
+  "eraser.apply": "Erase painted area",
+  "eraser.clear": "Clear strokes",
+  "eraser.undo": "Undo erase",
+  "eraser.downloading": "Downloading the eraser model (first time only)… {percent}%",
+  "eraser.working": "Erasing… (about 10 seconds)",
+  "eraser.error": "Could not erase: {message}",
 
   "export.title": "Export",
   "export.jpgWarning": "JPG has no transparency: transparent areas will be filled with white.",

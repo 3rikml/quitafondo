@@ -83,14 +83,30 @@ interface EditorCanvasProps {
    * comparing never bakes the original into the downloaded image.
    */
   compareSplit?: number | null;
+  /** Magic eraser strokes (source pixels, > 0 = painted), shown as a red overlay; null hides it. */
+  eraseMask?: Int16Array | null;
+  /** Bumped whenever `eraseMask` is painted into, to redraw the overlay. */
+  eraseMaskVersion?: number;
 }
 
 export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(function EditorCanvas(
-  { cutoutBlob, originalUrl, background, canvasConfig, getOverrideBuffer, retouchVersion, onRender, compareSplit = null },
+  {
+    cutoutBlob,
+    originalUrl,
+    background,
+    canvasConfig,
+    getOverrideBuffer,
+    retouchVersion,
+    onRender,
+    compareSplit = null,
+    eraseMask = null,
+    eraseMaskVersion = 0,
+  },
   ref
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const compareCanvasRef = useRef<HTMLCanvasElement>(null);
+  const eraseCanvasRef = useRef<HTMLCanvasElement>(null);
   const originalCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const bitmapRef = useRef<ImageBitmap | null>(null);
   const sourcePixelsRef = useRef<PixelBuffer | null>(null);
@@ -219,8 +235,34 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
     drawSubject(ctx, pixelBufferToCanvas(composedBuffer), fit, canvasConfig, subjectBoxRef.current);
 
     renderComparison(width, height, fit);
+    renderEraseOverlay();
     onRender?.();
   }
+
+  /** Red overlay of the magic eraser strokes, drawn with the subject's own fit. */
+  function renderEraseOverlay() {
+    const overlay = eraseCanvasRef.current;
+    const main = canvasRef.current;
+    const fit = fitRef.current;
+    const sourcePixels = sourcePixelsRef.current;
+    if (!overlay || !main || !fit || !sourcePixels || !eraseMask) return;
+    overlay.width = main.width;
+    overlay.height = main.height;
+    const ctx = overlay.getContext("2d")!;
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    if (eraseMask.length !== sourcePixels.width * sourcePixels.height) return;
+    const rgba = new Uint8ClampedArray(eraseMask.length * 4);
+    for (let i = 0; i < eraseMask.length; i++) {
+      if (eraseMask[i] > 0) rgba.set([239, 68, 68, 150], i * 4);
+    }
+    const maskCanvas = pixelBufferToCanvas({ width: sourcePixels.width, height: sourcePixels.height, data: rgba });
+    drawSubject(ctx, maskCanvas, fit, canvasConfig, null, { withShadow: false });
+  }
+
+  useEffect(() => {
+    renderEraseOverlay();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redraw only when the strokes change
+  }, [eraseMask, eraseMaskVersion]);
 
   /** The decoded original photo as a drawable canvas, or null until it has loaded. */
   function getOriginalCanvas(): HTMLCanvasElement | null {
@@ -338,6 +380,13 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
           backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
         }}
       />
+      {eraseMask && (
+        <canvas
+          ref={eraseCanvasRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full rounded-lg"
+        />
+      )}
       {compareSplit !== null && (
         <canvas
           ref={compareCanvasRef}
