@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { BackgroundConfig, ImageJob } from "@/lib/types";
+import type { BackgroundConfig } from "@/lib/types";
 import { loadSelectedJobId, saveSelectedJobId } from "@/lib/storage/db";
 import { copyRenderedImage, downloadRenderedImage } from "@/lib/image/downloadImage";
 import { cn } from "@/lib/utils";
@@ -352,9 +352,16 @@ export default function Home() {
 
   function applyToAll(setting: "background" | "canvas" | "exportConfig") {
     if (!selectedJob) return;
-    const patch: Partial<ImageJob> = { [setting]: selectedJob[setting] };
     jobs.forEach((job) => {
-      if (job.status === "done") updateJob(job.id, patch);
+      if (job.status !== "done") return;
+      if (setting === "canvas") {
+        // Only what the Size panel sets. Framing (crop, offsets, scale, rotation)
+        // is in each photo's own pixels, and shadow/edge/adjust are separate panels.
+        const { preset, widthPx, heightPx, marginPercent, centerSubject } = selectedJob.canvas;
+        updateJob(job.id, { canvas: { ...job.canvas, preset, widthPx, heightPx, marginPercent, centerSubject } });
+      } else {
+        updateJob(job.id, { [setting]: selectedJob[setting] });
+      }
     });
   }
 
