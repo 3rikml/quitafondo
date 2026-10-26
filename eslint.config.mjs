@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored ONNX Runtime binaries/loaders: not ours to lint.
+    "public/ort/**",
   ]),
 ]);
 

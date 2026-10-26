@@ -263,6 +263,8 @@ export default function Home() {
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
       const key = e.key.toLowerCase();
       const modifier = e.ctrlKey || e.metaKey;
+      // Menus, lists and dialogs use letters/digits for their own typeahead.
+      const inOverlay = target?.closest('select, [role="menu"], [role="listbox"], [role="combobox"], [role="dialog"]');
 
       if (crop.active && (e.key === "Enter" || e.key === "Escape")) {
         e.preventDefault();
@@ -276,6 +278,12 @@ export default function Home() {
         else undo();
         return;
       }
+      if (modifier && key === "y") {
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if (inOverlay) return;
       if (!editing || !selectedJob) return;
       if (modifier && e.shiftKey && key === "c") {
         e.preventDefault();
@@ -323,6 +331,14 @@ export default function Home() {
 
   const handleRemoveJob = useCallback(
     (id: string) => {
+      const removed = jobs.find((job) => job.id === id);
+      if (removed?.background.kind === "image") {
+        const { url } = removed.background;
+        // "Aplicar a todas" shares one URL between jobs: only the last user frees it.
+        if (!jobs.some((job) => job.id !== id && job.background.kind === "image" && job.background.url === url)) {
+          URL.revokeObjectURL(url);
+        }
+      }
       retouch.overridesByJobIdRef.current.delete(id);
       history.forget(id);
       eraser.forget(id);
@@ -330,7 +346,7 @@ export default function Home() {
       removeJob(id);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the override map is a stable ref; `forget` only touches refs
-    [removeJob]
+    [removeJob, jobs]
   );
 
   /**

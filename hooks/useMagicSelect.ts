@@ -58,7 +58,12 @@ export function useMagicSelect({ selectedJob, active, overridesByJobIdRef, histo
 
   function originalBlob(url: string): Promise<Blob> {
     if (originalRef.current?.url !== url) {
-      originalRef.current = { url, blob: fetch(url).then((response) => response.blob()) };
+      const blob = fetch(url).then((response) => response.blob());
+      originalRef.current = { url, blob };
+      // A failed fetch must not stay cached: every later click would fail with it.
+      blob.catch(() => {
+        if (originalRef.current?.blob === blob) originalRef.current = null;
+      });
     }
     return originalRef.current.blob;
   }
@@ -83,6 +88,8 @@ export function useMagicSelect({ selectedJob, active, overridesByJobIdRef, histo
       });
     return () => {
       cancelled = true;
+      // Closed (or switched image) mid-analysis: don't leave "preparing" on screen.
+      setStatus((current) => (current.kind === "preparing" ? { kind: "idle" } : current));
     };
   }, [active, jobUrl]);
 

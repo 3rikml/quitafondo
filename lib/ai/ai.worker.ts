@@ -173,21 +173,23 @@ async function fetchModel(url: string, expectedBytes: number, onProgress: (ratio
   if (!response.ok || !response.body) throw new Error(`No se pudo descargar el modelo (${response.status}).`);
   const total = Number(response.headers.get("content-length")) || expectedBytes;
   const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
+  // Written straight into one buffer: collecting chunks first would hold the
+  // whole 208 MB twice at the peak, which phones cannot afford.
+  let buffer = new Uint8Array(total);
   let received = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    chunks.push(value);
+    if (received + value.length > buffer.length) {
+      const grown = new Uint8Array(Math.max(buffer.length * 2, received + value.length));
+      grown.set(buffer.subarray(0, received));
+      buffer = grown;
+    }
+    buffer.set(value, received);
     received += value.length;
     onProgress(Math.min(1, received / total));
   }
-  const bytes = new Uint8Array(received);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
+  const bytes = received === buffer.length ? buffer : buffer.slice(0, received);
   await cache?.put(url, new Response(bytes, { headers: { "content-type": "application/octet-stream" } })).catch(() => {});
   return bytes;
 }
