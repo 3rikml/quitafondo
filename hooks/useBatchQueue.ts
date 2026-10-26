@@ -7,6 +7,7 @@ import { removeImageBackground } from "@/hooks/useBackgroundRemoval";
 import { downscaleIfHuge } from "@/lib/image/downscale";
 import { scaleCanvasConfig } from "@/lib/image/canvasFit";
 import { t } from "@/lib/i18n";
+import { toast } from "@/components/ui/toast";
 import { isBackgroundRemovalSupported, validateImageFile } from "@/lib/image/fileValidation";
 import { toPersistedJob, fromPersistedJob } from "@/lib/storage/schema";
 import { saveJob, loadAllJobs, deleteJob as deletePersistedJob } from "@/lib/storage/db";
@@ -17,6 +18,9 @@ import { saveJob, loadAllJobs, deleteJob as deletePersistedJob } from "@/lib/sto
 const SAVE_DEBOUNCE_MS = 500;
 
 const MAX_CONCURRENT_JOBS = 2;
+
+/** Thrown inside a run that was superseded (photo replaced) or removed, to drop its result. */
+class StaleRun extends Error {}
 
 function createJobId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -38,6 +42,16 @@ export function useBatchQueue() {
   const pendingIds = useRef<string[]>([]);
   const pumpRef = useRef<() => void>(() => {});
   const saveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // The latest jobs, for code that runs outside React's updaters (timers, callbacks).
+  const jobsRef = useRef<ImageJob[]>([]);
+  useEffect(() => {
+    jobsRef.current = jobs;
+  });
+  // Which run of each job is current: replacing the photo (or removing the job)
+  // invalidates the run still in flight so its result cannot land on the new photo.
+  const runTokensRef = useRef<Map<string, number>>(new Map());
+  const lastRunTokenRef = useRef(0);
+  const warnedSaveFailureRef = useRef(false);
 
   // Restore whatever `done` jobs survived from a previous session, once, on
   // mount. Only `done` jobs are ever persisted (see lib/storage/schema.ts) —
@@ -69,15 +83,25 @@ export function useBatchQueue() {
       id,
       setTimeout(() => {
         saveTimersRef.current.delete(id);
-        setJobs((prev) => {
-          const job = prev.find((j) => j.id === id);
-          const file = filesById.current.get(id);
-          if (job && file) {
-            const persisted = toPersistedJob(job, file);
-            if (persisted) saveJob(persisted);
-          }
-          return prev;
-        });
+        const job = jobsRef.current.find((j) => j.id === id);
+        const file = filesById.current.get(id);
+        const persisted = job && file ? toPersistedJob(job, file) : null;
+        if (!job || !persisted) return;
+
+        const save = (record: typeof persisted) =>
+          saveJob(record).catch((error) => {
+            console.warn("No se pudo guardar la imagen.", error);
+            if (warnedSaveFailureRef.current) return;
+            warnedSaveFailureRef.current = true;
+            toast.add({ title: t("queue.saveFailed"), type: "error" });
+          });
+        if (job.background.kind === "image") {
+          // The object URL won't outlive the page, so keep the image's bytes.
+          fetch(job.background.url)
+            .then((response) => response.blob())
+            .then((backgroundBlob) => save({ ...persisted, backgroundBlob }))
+            .catch(() => save(persisted));
+        } else save(persisted);
       }, SAVE_DEBOUNCE_MS)
     );
   }, []);
@@ -107,6 +131,12 @@ export function useBatchQueue() {
       const file = filesById.current.get(id);
       if (!file) return;
 
+      const token = ++lastRunTokenRef.current; // never reused, so a deleted token can't match a new run
+      runTokensRef.current.set(id, token);
+      const assertCurrent = () => {
+        if (runTokensRef.current.get(id) !== token) throw new StaleRun();
+      };
+
       updateJob(id, { status: "processing", progress: undefined });
 
       // Reduce huge photos first, and use the reduced copy as the job's
@@ -114,6 +144,7 @@ export function useBatchQueue() {
       // and the cutout to have identical dimensions.
       downscaleIfHuge(file)
         .then((reduced) => {
+          assertCurrent();
           if (!reduced) return file;
           filesById.current.set(id, reduced.blob);
           const originalUrl = URL.createObjectURL(reduced.blob);
@@ -131,11 +162,17 @@ export function useBatchQueue() {
           );
           return reduced.blob;
         })
-        .then((input) => removeImageBackground(input, (ratio) => updateJob(id, { progress: ratio })))
+        .then((input) =>
+          removeImageBackground(input, (ratio) => {
+            if (runTokensRef.current.get(id) === token) updateJob(id, { progress: ratio });
+          })
+        )
         .then((cutoutBlob) => {
+          assertCurrent();
           updateJob(id, { status: "done", cutoutBlob, progress: undefined });
         })
         .catch((error: unknown) => {
+          if (error instanceof StaleRun || runTokensRef.current.get(id) !== token) return;
           updateJob(id, {
             status: "error",
             errorMessage: error instanceof Error ? error.message : t("error.unknown"),
@@ -235,6 +272,7 @@ export function useBatchQueue() {
       return prev.filter((j) => j.id !== id);
     });
     filesById.current.delete(id);
+    runTokensRef.current.delete(id);
     pendingIds.current = pendingIds.current.filter((pendingId) => pendingId !== id);
     const pendingSave = saveTimersRef.current.get(id);
     if (pendingSave) {
@@ -261,25 +299,28 @@ export function useBatchQueue() {
       const validationError = validateImageFile(file);
       if (validationError) return validationError;
 
-      setJobs((prev) => {
-        const job = prev.find((j) => j.id === id);
-        if (!job) return prev;
-        if (job.originalUrl) URL.revokeObjectURL(job.originalUrl);
-        return prev.map((j) =>
+      const previous = jobsRef.current.find((j) => j.id === id);
+      if (!previous) return null;
+      // Side effects stay out of the updater: React may run it twice.
+      if (previous.originalUrl) URL.revokeObjectURL(previous.originalUrl);
+      const originalUrl = URL.createObjectURL(file);
+      runTokensRef.current.delete(id); // a run still in flight is for the old photo
+      setJobs((prev) =>
+        prev.map((j) =>
           j.id === id
             ? {
                 ...j,
                 canvas: sourceScale === 1 ? j.canvas : scaleCanvasConfig(j.canvas, sourceScale),
                 fileName: file.name,
-                originalUrl: URL.createObjectURL(file),
+                originalUrl,
                 status: "pending",
                 cutoutBlob: undefined,
                 errorMessage: undefined,
                 progress: undefined,
               }
             : j
-        );
-      });
+        )
+      );
       filesById.current.set(id, file);
       pendingIds.current = pendingIds.current.filter((pendingId) => pendingId !== id);
       pendingIds.current.push(id);

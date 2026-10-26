@@ -23,9 +23,12 @@ export function useStageNavigation(stage: HTMLElement | null, onGestureInterrupt
   const viewRef = useRef(view);
   const spaceRef = useRef(false);
   const interruptRef = useRef(onGestureInterrupted);
-  useEffect(() => {
-    viewRef.current = view;
-  }, [view]);
+  // Written synchronously (not only after render): several wheel events can
+  // land in one frame, and each must build on the previous one's result.
+  const commit = useCallback((next: Viewport) => {
+    viewRef.current = next;
+    setView(next);
+  }, []);
   useEffect(() => {
     interruptRef.current = onGestureInterrupted;
   }, [onGestureInterrupted]);
@@ -72,11 +75,11 @@ export function useStageNavigation(stage: HTMLElement | null, onGestureInterrupt
       const current = viewRef.current;
       if (e.ctrlKey || e.metaKey) {
         // Trackpad pinches arrive as ctrl + wheel too.
-        setView(zoomAt(current, current.zoom * wheelZoomFactor(e.deltaY), e.clientX - c.x, e.clientY - c.y));
+        commit(zoomAt(current, current.zoom * wheelZoomFactor(e.deltaY), e.clientX - c.x, e.clientY - c.y));
       } else {
         const dx = e.shiftKey && e.deltaX === 0 ? e.deltaY : e.deltaX;
         const dy = e.shiftKey && e.deltaX === 0 ? 0 : e.deltaY;
-        setView({ ...current, panX: current.panX - dx, panY: current.panY - dy });
+        commit({ ...current, panX: current.panX - dx, panY: current.panY - dy });
       }
     };
 
@@ -120,13 +123,13 @@ export function useStageNavigation(stage: HTMLElement | null, onGestureInterrupt
           e.stopPropagation();
           const now = pinchGeometry();
           const zoomed = zoomAt(pinch.view, clampZoom(pinch.view.zoom * (now.distance / pinch.distance)), pinch.midX, pinch.midY);
-          setView({ ...zoomed, panX: zoomed.panX + now.midX - pinch.midX, panY: zoomed.panY + now.midY - pinch.midY });
+          commit({ ...zoomed, panX: zoomed.panX + now.midX - pinch.midX, panY: zoomed.panY + now.midY - pinch.midY });
         }
         return;
       }
       if (!drag || e.pointerId !== drag.id) return;
       e.stopPropagation();
-      setView({ ...viewRef.current, panX: drag.panX + e.clientX - drag.x, panY: drag.panY + e.clientY - drag.y });
+      commit({ ...viewRef.current, panX: drag.panX + e.clientX - drag.x, panY: drag.panY + e.clientY - drag.y });
     };
 
     const up = (e: PointerEvent) => {
@@ -157,11 +160,11 @@ export function useStageNavigation(stage: HTMLElement | null, onGestureInterrupt
       stage.removeEventListener("pointerup", up, true);
       stage.removeEventListener("pointercancel", up, true);
     };
-  }, [stage]);
+  }, [stage, commit]);
 
   /** Zooms around the stage's center (for the zoom buttons). */
-  const setZoom = useCallback((zoom: number) => setView((current) => zoomAt(current, zoom, 0, 0)), []);
-  const fit = useCallback(() => setView(FIT), []);
+  const setZoom = useCallback((zoom: number) => commit(zoomAt(viewRef.current, zoom, 0, 0)), [commit]);
+  const fit = useCallback(() => commit(FIT), [commit]);
 
   return { view, setZoom, fit, spaceHeld, panning };
 }

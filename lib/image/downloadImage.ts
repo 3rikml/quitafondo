@@ -31,14 +31,15 @@ export async function downloadRenderedImage(
   fileNameBase: string
 ): Promise<void> {
   const blob = await encodeRenderedImage(pixels, exportConfig);
-  if (!blob) return;
+  if (!blob) throw new Error("No se pudo codificar la imagen.");
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = `${fileNameBase}.${exportConfig.format}`;
   link.click();
-  URL.revokeObjectURL(url);
+  // Revoking right away can cancel the download in Safari.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 /**

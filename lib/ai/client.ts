@@ -17,6 +17,9 @@ const TASKS: AiTask[] = ["segment", "upscale", "sam", "inpaint"];
  * WebGPU for that task outright. Per task because one model can hit a GPU
  * limit another one fits in (e.g. upscaling fails where segmentation works).
  */
+/** A WebGPU failure sends the task to WASM only for a while, so a driver update or one bad run isn't forever. */
+const WEBGPU_BROKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 const webGpuBrokenKey = (task: AiTask) => `quitafondo:webgpu-broken:${task}`;
 
 let worker: Worker | null = null;
@@ -26,7 +29,10 @@ const pending = new Map<number, PendingRequest>();
 
 function readWebGpuBroken(task: AiTask): boolean {
   try {
-    return typeof localStorage !== "undefined" && localStorage.getItem(webGpuBrokenKey(task)) === "1";
+    if (typeof localStorage === "undefined") return false;
+    // Stored as the time of the failure; old "1" values read as long expired.
+    const failedAt = Number(localStorage.getItem(webGpuBrokenKey(task)));
+    return Date.now() - failedAt < WEBGPU_BROKEN_TTL_MS;
   } catch {
     return false;
   }
@@ -35,7 +41,7 @@ function readWebGpuBroken(task: AiTask): boolean {
 function rememberWebGpuBroken(task: AiTask): void {
   wasmOnlyTasks.add(task);
   try {
-    localStorage.setItem(webGpuBrokenKey(task), "1");
+    localStorage.setItem(webGpuBrokenKey(task), String(Date.now()));
   } catch {
     // Private mode / blocked storage: the in-memory flag still covers this visit.
   }

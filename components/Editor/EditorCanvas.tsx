@@ -116,7 +116,8 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
   const compareCanvasRef = useRef<HTMLCanvasElement>(null);
   const eraseCanvasRef = useRef<HTMLCanvasElement>(null);
   const originalCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const bitmapRef = useRef<ImageBitmap | null>(null);
+  // Size of the decoded cutout (the bitmap itself is closed once its pixels are read).
+  const bitmapRef = useRef<{ width: number; height: number } | null>(null);
   const sourcePixelsRef = useRef<PixelBuffer | null>(null);
   const originalPixelsRef = useRef<PixelBuffer | null>(null);
   const warnedDimensionMismatchRef = useRef(false);
@@ -144,19 +145,27 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
     subjectBoxRef.current = null;
     overrideAlphaRef.current = null;
 
-    createImageBitmap(cutoutBlob).then((bitmap) => {
-      if (cancelled) return;
-      bitmapRef.current = bitmap;
+    createImageBitmap(cutoutBlob)
+      .then((bitmap) => {
+        if (cancelled) {
+          bitmap.close();
+          return;
+        }
+        bitmapRef.current = { width: bitmap.width, height: bitmap.height };
 
-      sourcePixelsRef.current = readBitmapPixels(bitmap);
-      subjectBoxRef.current = computeAlphaBoundingBox(sourcePixelsRef.current);
+        sourcePixelsRef.current = readBitmapPixels(bitmap);
+        bitmap.close();
+        subjectBoxRef.current = computeAlphaBoundingBox(sourcePixelsRef.current);
 
-      // Never create the buffer here: the parent may already hold this job's
-      // earlier retouch strokes, and overwriting them would discard them.
-      overrideAlphaRef.current = getOverrideBuffer(bitmap.width, bitmap.height);
+        // Never create the buffer here: the parent may already hold this job's
+        // earlier retouch strokes, and overwriting them would discard them.
+        overrideAlphaRef.current = getOverrideBuffer(bitmapRef.current.width, bitmapRef.current.height);
 
-      render();
-    });
+        renderRef.current();
+      })
+      .catch((error) => {
+        if (!cancelled) console.warn("No se pudo decodificar el recorte.", error);
+      });
 
     return () => {
       cancelled = true;
@@ -184,7 +193,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
         bitmap = decoded;
         if (cancelled) return;
         originalPixelsRef.current = readBitmapPixels(decoded);
-        render();
+        renderRef.current();
       })
       .catch((error) => {
         console.warn(
@@ -199,7 +208,6 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [originalUrl]);
 
   useEffect(() => {
@@ -218,6 +226,13 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
     onRender?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitArea?.width, fitArea?.height]);
+
+  // Async callbacks (decodes, image loads) must draw with the latest props, not
+  // the ones from the render that scheduled them.
+  const renderRef = useRef(render);
+  useEffect(() => {
+    renderRef.current = render;
+  });
 
   function render() {
     const canvas = canvasRef.current;
@@ -244,7 +259,7 @@ export const EditorCanvas = forwardRef<EditorCanvasHandle, EditorCanvasProps>(fu
       height,
       background,
       background.kind === "image"
-        ? resolveCachedImage(background.url, imageCacheRef.current, () => render())
+        ? resolveCachedImage(background.url, imageCacheRef.current, () => renderRef.current())
         : background.kind === "blur"
           ? getOriginalCanvas()
           : null,
@@ -439,7 +454,8 @@ function resolveCachedImage(
   onLoad: () => void
 ): HTMLImageElement | null {
   const cached = imageCache.get(url);
-  if (cached) return cached.complete ? cached : null;
+  // A failed load (e.g. a dead object URL) is also `complete`, but has no pixels.
+  if (cached) return cached.complete && cached.naturalWidth > 0 ? cached : null;
 
   const img = new Image();
   img.onload = onLoad;

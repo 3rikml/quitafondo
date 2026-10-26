@@ -16,7 +16,7 @@ interface SubjectTransformDeps {
   canvasWrapperRef: RefObject<HTMLDivElement | null>;
   canvasRenderTick: number;
   history: {
-    snapshot: (job: ImageJob) => HistoryEntry;
+    snapshot: (job: ImageJob, transformOnly?: boolean) => HistoryEntry;
     record: (jobId: string, before: HistoryEntry) => void;
   };
 }
@@ -81,7 +81,7 @@ export function useSubjectTransform({
       clientY,
       offsetX: selectedJob.canvas.offsetX,
       offsetY: selectedJob.canvas.offsetY,
-      before: history.snapshot(selectedJob),
+      before: history.snapshot(selectedJob, true),
     };
   }
 
@@ -132,7 +132,7 @@ export function useSubjectTransform({
       centerClientY,
       startDistance: Math.hypot(e.clientX - centerClientX, e.clientY - centerClientY) || 1,
       startScale: selectedJob.canvas.manualScale,
-      before: history.snapshot(selectedJob),
+      before: history.snapshot(selectedJob, true),
     };
     e.currentTarget.setPointerCapture(e.pointerId);
   }

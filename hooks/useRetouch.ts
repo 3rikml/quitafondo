@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { forEachDabAlong, type Point } from "@/lib/editor/strokePath";
 import { createOverrideBuffer, upsampleOverrides } from "@/lib/image/alphaCompose";
 import {
   canvasToSourceCoords,
@@ -46,6 +47,8 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
   // the current pixel count and is fully reset after every dab.
   const smartScratchRef = useRef(createSmartBrushScratch(0));
   const rafRef = useRef<number | null>(null);
+  // Where the current stroke's last dab landed (source pixels), to fill the gap to the next event.
+  const lastDabRef = useRef<Point | null>(null);
   // The image the brush size was last fitted to.
   const sizedForJobRef = useRef<string | null>(null);
   useEffect(
@@ -92,20 +95,27 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
     });
   }, []);
 
-  function paintAt(canvas: HTMLCanvasElement, clientX: number, clientY: number) {
+  /** `startOfStroke` drops the previous stroke's last point, so strokes never join. */
+  function paintAt(canvas: HTMLCanvasElement, clientX: number, clientY: number, startOfStroke = false) {
     const handle = canvasHandleRef.current;
     const fit = handle?.getFit();
     const sourceSize = handle?.getSourceSize();
     const overrides = selectedJobId ? overridesByJobIdRef.current.get(selectedJobId) : undefined;
     if (!handle || !overrides || !fit || !sourceSize) return;
 
-    const { x, y } = canvasToSourceCoords(canvas, fit, clientX, clientY);
+    const target = canvasToSourceCoords(canvas, fit, clientX, clientY);
     const sourcePixels = smart ? handle.getSourcePixels() : null;
-    if (smart && sourcePixels) {
-      paintSmartBrushStroke(overrides, sourcePixels, x, y, brushSize, mode, tolerance, smartScratchRef.current);
-    } else {
-      paintBrushStroke(overrides, sourceSize.width, sourceSize.height, x, y, brushSize, mode, hardness);
-    }
+    if (startOfStroke) lastDabRef.current = null;
+    // The smart brush floods per dab, so it gets fewer, wider-spaced ones.
+    const spacing = smart ? brushSize : brushSize * 0.35;
+    forEachDabAlong(lastDabRef.current, target, spacing, ({ x, y }) => {
+      if (smart && sourcePixels) {
+        paintSmartBrushStroke(overrides, sourcePixels, x, y, brushSize, mode, tolerance, smartScratchRef.current);
+      } else {
+        paintBrushStroke(overrides, sourceSize.width, sourceSize.height, x, y, brushSize, mode, hardness);
+      }
+    });
+    lastDabRef.current = target;
     scheduleRedraw();
   }
 

@@ -31,6 +31,7 @@ export const en: Record<MessageKey, string> = {
   "download.all": "Download all (ZIP)",
   "download.allCount": "Download all · {count} images",
   "download.done": "Image downloaded",
+  "download.failed": "Could not download the image",
   "download.copied": "Image copied to the clipboard",
 
   "welcome.title": "Remove the background from your photos",
@@ -61,6 +62,7 @@ export const en: Record<MessageKey, string> = {
   "queue.remove": "Remove {name} from the list",
   "queue.zipNoneProcessed": "Could not create the ZIP: no image could be processed.",
   "queue.zipPartial": "{failed} of {total} image(s) could not be included in the ZIP.",
+  "queue.saveFailed": "Could not save your work in this browser; it will be lost on reload.",
   "queue.zipFailed": "Could not create the ZIP. Please try again.",
   "queue.downscaled": "Reduced to {width}×{height} px to process it in the browser",
 

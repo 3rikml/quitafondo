@@ -6,6 +6,7 @@ import { runInpaint } from "@/lib/ai/client";
 import { DOWNLOAD_PROGRESS_SHARE } from "@/lib/ai/protocol";
 import { t } from "@/lib/i18n";
 import { toast } from "@/components/ui/toast";
+import { forEachDabAlong, type Point } from "@/lib/editor/strokePath";
 import { canvasToSourceCoords, paintBrushStroke } from "@/components/Editor/RetouchToolbar";
 import type { EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
 
@@ -32,6 +33,8 @@ export function useMagicEraser({ selectedJob, canvasHandleRef, replaceJobImages 
   const masksRef = useRef<Map<string, Int16Array>>(new Map());
   const undoRef = useRef<Map<string, { original: Blob; cutout: Blob }[]>>(new Map());
   const rafRef = useRef<number | null>(null);
+  // Where the current stroke's last dab landed, to fill the gap to the next event.
+  const lastDabRef = useRef<Point | null>(null);
   // Bumped to redraw the red mask overlay / re-read the ref-backed state.
   const [version, setVersion] = useState(0);
   const [status, setStatus] = useState<EraserStatus>({ kind: "idle" });
@@ -63,12 +66,17 @@ export function useMagicEraser({ selectedJob, canvasHandleRef, replaceJobImages 
   }
 
   /** Paints the area to erase with a hard round brush of `radius` source pixels. */
-  function paintAt(canvas: HTMLCanvasElement, clientX: number, clientY: number, radius: number) {
+  function paintAt(canvas: HTMLCanvasElement, clientX: number, clientY: number, radius: number, startOfStroke = false) {
     const fit = canvasHandleRef.current?.getFit();
     const size = canvasHandleRef.current?.getSourceSize();
     if (!jobId || !fit || !size || status.kind === "working") return;
-    const { x, y } = canvasToSourceCoords(canvas, fit, clientX, clientY);
-    paintBrushStroke(maskFor(jobId, size.width * size.height), size.width, size.height, x, y, radius, "restore", 1);
+    const target = canvasToSourceCoords(canvas, fit, clientX, clientY);
+    if (startOfStroke) lastDabRef.current = null;
+    const mask = maskFor(jobId, size.width * size.height);
+    forEachDabAlong(lastDabRef.current, target, radius * 0.35, ({ x, y }) =>
+      paintBrushStroke(mask, size.width, size.height, x, y, radius, "restore", 1)
+    );
+    lastDabRef.current = target;
     scheduleRedraw();
   }
 

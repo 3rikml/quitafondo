@@ -21,7 +21,7 @@ interface CropToolDeps {
   /** Bumped after every EditorCanvas render, so the overlay follows the real layout. */
   canvasRenderTick: number;
   history: {
-    snapshot: (job: ImageJob) => HistoryEntry;
+    snapshot: (job: ImageJob, transformOnly?: boolean) => HistoryEntry;
     record: (jobId: string, before: HistoryEntry) => void;
   };
 }
@@ -100,7 +100,7 @@ export function useCropTool({
 
   function commit(nextCropBox: BoundingBox | null) {
     if (!selectedJob) return;
-    const before = history.snapshot(selectedJob);
+    const before = history.snapshot(selectedJob, true);
     updateJob(selectedJob.id, { canvas: { ...selectedJob.canvas, cropBox: nextCropBox } });
     history.record(selectedJob.id, before);
   }

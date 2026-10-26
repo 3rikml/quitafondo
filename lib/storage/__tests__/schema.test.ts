@@ -57,6 +57,15 @@ describe("fromPersistedJob", () => {
     expect(job.originalUrl).toBe("blob:rehydrated");
   });
 
+  it("recreates an image background's URL from its persisted bytes", () => {
+    const backgroundBlob = new Blob(["bg"]);
+    const job = makeJob({ background: { kind: "image", url: "blob:dead" } });
+    const rehydrated = fromPersistedJob(toPersistedJob(job, new Blob(), backgroundBlob)!);
+
+    expect(URL.createObjectURL).toHaveBeenCalledWith(backgroundBlob);
+    expect(rehydrated.background).toEqual({ kind: "image", url: "blob:rehydrated" });
+  });
+
   it("round-trips as a status:done job with no error message", () => {
     const persisted = toPersistedJob(makeJob(), new Blob())!;
     const job = fromPersistedJob(persisted);

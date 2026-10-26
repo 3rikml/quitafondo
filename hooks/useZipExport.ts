@@ -21,20 +21,26 @@ export function useZipExport(jobs: ImageJob[], getRetouchOverride: (jobId: strin
     setIsZipping(true);
     setError(null);
     try {
-      const results = await Promise.allSettled(
-        doneJobs.map(async (job) => ({
-          name: `${job.fileName.replace(/\.[^.]+$/, "")}.${job.exportConfig.format}`,
-          blob: await renderJobToBlob(
-            job.cutoutBlob as Blob,
-            job.background,
-            job.canvas,
-            job.exportConfig,
-            getRetouchOverride(job.id),
-            job.originalUrl
-          ),
-        }))
-      );
-      const entries = results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+      // One at a time: every render holds full-resolution pixel buffers, so
+      // rendering the whole batch at once could exhaust memory.
+      const entries: { name: string; blob: Blob }[] = [];
+      for (const job of doneJobs) {
+        try {
+          entries.push({
+            name: `${job.fileName.replace(/\.[^.]+$/, "")}.${job.exportConfig.format}`,
+            blob: await renderJobToBlob(
+              job.cutoutBlob as Blob,
+              job.background,
+              job.canvas,
+              job.exportConfig,
+              getRetouchOverride(job.id),
+              job.originalUrl
+            ),
+          });
+        } catch {
+          // Counted as failed below.
+        }
+      }
       if (entries.length === 0) {
         setError(t("queue.zipNoneProcessed"));
         return;
@@ -44,9 +50,9 @@ export function useZipExport(jobs: ImageJob[], getRetouchOverride: (jobId: strin
       link.href = url;
       link.download = "quitafondo.zip";
       link.click();
-      URL.revokeObjectURL(url);
-      const failed = results.length - entries.length;
-      if (failed > 0) setError(t("queue.zipPartial", { failed, total: results.length }));
+      setTimeout(() => URL.revokeObjectURL(url), 10_000); // revoking at once can cancel the download in Safari
+      const failed = doneJobs.length - entries.length;
+      if (failed > 0) setError(t("queue.zipPartial", { failed, total: doneJobs.length }));
     } catch {
       setError(t("queue.zipFailed"));
     } finally {

@@ -21,12 +21,14 @@ export interface PersistedJob {
   exportConfig: ExportConfig;
   cutoutBlob: Blob;
   originalBlob: Blob;
+  /** Bytes of an "Imagen" background: its object URL dies with the page. */
+  backgroundBlob?: Blob;
 }
 
 /** `originalBlob` is the actual uploaded file's bytes, kept by the caller
  * (only `useBatchQueue`'s private file map has it) — this function can't
  * reach it on its own. */
-export function toPersistedJob(job: ImageJob, originalBlob: Blob): PersistedJob | null {
+export function toPersistedJob(job: ImageJob, originalBlob: Blob, backgroundBlob?: Blob): PersistedJob | null {
   if (job.status !== "done" || !job.cutoutBlob) return null;
   return {
     id: job.id,
@@ -36,6 +38,7 @@ export function toPersistedJob(job: ImageJob, originalBlob: Blob): PersistedJob 
     exportConfig: job.exportConfig,
     cutoutBlob: job.cutoutBlob,
     originalBlob,
+    ...(backgroundBlob && { backgroundBlob }),
   };
 }
 
@@ -57,7 +60,9 @@ export function fromPersistedJob(persisted: PersistedJob): ImageJob {
     originalUrl: URL.createObjectURL(persisted.originalBlob),
     status: "done",
     cutoutBlob: persisted.cutoutBlob,
-    background: { ...DEFAULT_BACKGROUND, ...persisted.background },
+    background: persisted.backgroundBlob
+      ? { kind: "image", url: URL.createObjectURL(persisted.backgroundBlob) }
+      : { ...DEFAULT_BACKGROUND, ...persisted.background },
     canvas: { ...DEFAULT_CANVAS, ...persisted.canvas },
     exportConfig: { ...DEFAULT_EXPORT, ...persisted.exportConfig },
   };

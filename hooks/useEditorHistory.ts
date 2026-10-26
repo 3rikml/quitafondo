@@ -11,11 +11,16 @@ import { NO_OVERRIDE } from "@/lib/image/alphaCompose";
 export interface HistoryEntry {
   canvas: CanvasConfig;
   overrideSnapshot: Int16Array;
+  /** The gesture only moved/framed the subject: no mask was copied and undo leaves the mask alone. */
+  transformOnly?: boolean;
 }
 
 /** Capped per job: each entry clones a full-resolution Int16Array, so an
  * unbounded stack could grow into hundreds of MB on large photos. */
 const HISTORY_LIMIT = 20;
+
+/** Total mask bytes the undo stacks of all images may hold; the oldest steps go first. */
+const HISTORY_BYTE_BUDGET = 256 * 1024 * 1024;
 
 interface Stacks {
   past: HistoryEntry[];
@@ -43,12 +48,23 @@ export function useEditorHistory(
   }
 
   const snapshot = useCallback(
-    (job: ImageJob): HistoryEntry => {
+    (job: ImageJob, transformOnly = false): HistoryEntry => {
+      // Moving or cropping can't change the mask, so don't clone tens of MB for it.
+      if (transformOnly) return { canvas: job.canvas, overrideSnapshot: new Int16Array(0), transformOnly };
       const overrides = overridesByJobIdRef.current.get(job.id);
       return { canvas: job.canvas, overrideSnapshot: (overrides ?? new Int16Array(0)).slice() };
     },
     [overridesByJobIdRef]
   );
+
+  function totalBytes(): number {
+    let total = 0;
+    for (const { past, future } of stacksByJobIdRef.current.values()) {
+      for (const entry of past) total += entry.overrideSnapshot.byteLength;
+      for (const entry of future) total += entry.overrideSnapshot.byteLength;
+    }
+    return total;
+  }
 
   /** Records the state from BEFORE a finished gesture as one undo step. */
   function record(jobId: string, before: HistoryEntry) {
@@ -56,6 +72,8 @@ export function useEditorHistory(
     stacks.past.push(before);
     if (stacks.past.length > HISTORY_LIMIT) stacks.past.shift();
     stacks.future = [];
+    // Over budget: forget this image's oldest steps (keep at least the latest).
+    while (stacks.past.length > 1 && totalBytes() > HISTORY_BYTE_BUDGET) stacks.past.shift();
     setVersion((v) => v + 1);
   }
 
@@ -67,11 +85,16 @@ export function useEditorHistory(
    */
   function apply(job: ImageJob, entry: HistoryEntry) {
     updateJob(job.id, { canvas: entry.canvas });
+    if (entry.transformOnly) {
+      onOverridesRestored();
+      return;
+    }
     const current = overridesByJobIdRef.current.get(job.id);
     const saved = entry.overrideSnapshot;
     if (current && current.length === saved.length) current.set(saved);
     else if (current && saved.length === 0) current.fill(NO_OVERRIDE); // saved before any retouch
-    else overridesByJobIdRef.current.set(job.id, saved.slice());
+    else if (!current) overridesByJobIdRef.current.set(job.id, saved.slice());
+    // else: the photo changed size since this entry — leave the mask alone
     onOverridesRestored();
   }
 

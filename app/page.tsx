@@ -128,25 +128,30 @@ export default function Home() {
     setCompareSplit(null);
     stageNav.fit();
   }
-  // With images but none selected (e.g. the selected one was removed), show the first.
-  if (!selectedJob && selectedJobId === null && jobs.length > 0) {
+  // With images but none (or a stale id, e.g. the selected one was removed or
+  // never persisted), show the first.
+  if (!selectedJob && jobs.length > 0) {
     setSelectedJobId(jobs[0].id);
   }
 
   // Restore the last-viewed image from a previous session; `selectedJob`
   // simply resolves to null until the persisted jobs finish loading.
+  const selectionRestoredRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
     loadSelectedJobId().then((id) => {
-      if (!cancelled && id) setSelectedJobId(id);
+      if (cancelled) return;
+      selectionRestoredRef.current = true;
+      if (id) setSelectedJobId(id);
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
+  // Not before the restore finished: the initial `null` would overwrite the saved id.
   useEffect(() => {
-    saveSelectedJobId(selectedJobId);
+    if (selectionRestoredRef.current) saveSelectedJobId(selectedJobId);
   }, [selectedJobId]);
 
   // Fit the brush to each image once it has been drawn (its pixel size is known then).
@@ -174,6 +179,8 @@ export default function Home() {
     try {
       await downloadRenderedImage(pixels, selectedJob.exportConfig, selectedJob.fileName.replace(/\.[^.]+$/, ""));
       toast.add({ title: t("download.done"), type: "success" });
+    } catch {
+      toast.add({ title: t("download.failed"), type: "error" });
     } finally {
       setIsDownloading(false);
     }
@@ -193,11 +200,14 @@ export default function Home() {
   // Canvas gestures: a brush stroke while retouching, otherwise dragging the subject.
   function handleCanvasPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (crop.active || !selectedJob) return;
+    // Right/middle clicks open the context menu or pan: no stroke, no drag.
+    if (e.button !== 0) return;
     const canvas = e.currentTarget.querySelector("canvas");
     if (erasing) {
       if (!canvas) return;
       eraserStrokeRef.current = true;
-      eraser.paintAt(canvas, e.clientX, e.clientY, retouch.toolbarProps.brushSize);
+      e.currentTarget.setPointerCapture(e.pointerId); // the stroke ends even if released off the stage
+      eraser.paintAt(canvas, e.clientX, e.clientY, retouch.toolbarProps.brushSize, true);
       return;
     }
     if (retouchActive && retouch.tool === "magic") {
@@ -211,7 +221,8 @@ export default function Home() {
     if (retouchActive) {
       magic.forget(); // a size change after this stroke would overwrite it
       strokeStartRef.current = history.snapshot(selectedJob);
-      if (canvas) retouch.paintAt(canvas, e.clientX, e.clientY);
+      e.currentTarget.setPointerCapture(e.pointerId);
+      if (canvas) retouch.paintAt(canvas, e.clientX, e.clientY, true);
       return;
     }
     subject.startDrag(e.clientX, e.clientY);
@@ -220,6 +231,11 @@ export default function Home() {
   function handleCanvasPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const canvas = e.currentTarget.querySelector("canvas");
     if (!canvas) return;
+    // A button release we never saw (context menu, alt-tab) must not leave a stroke running.
+    if ((eraserStrokeRef.current || strokeStartRef.current) && !(e.buttons & 1)) {
+      handleCanvasPointerUp();
+      return;
+    }
     if (erasing) {
       if (eraserStrokeRef.current) eraser.paintAt(canvas, e.clientX, e.clientY, retouch.toolbarProps.brushSize);
       return;
@@ -288,6 +304,22 @@ export default function Home() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
+
+  // Undo entries (framing in pixels, mask sized for the old photo) no longer
+  // fit a swapped photo. A different photo (scale 1) also drops the old strokes;
+  // an enlargement keeps them, upsampled by `getOverrideBuffer`.
+  const handleReplaceJobFile = useCallback(
+    (id: string, file: File, sourceScale = 1) => {
+      const error = replaceJobFile(id, file, sourceScale);
+      if (!error) {
+        history.forget(id);
+        if (sourceScale === 1) retouch.overridesByJobIdRef.current.delete(id);
+      }
+      return error;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `forget` and the override map only touch refs
+    [replaceJobFile]
+  );
 
   const handleRemoveJob = useCallback(
     (id: string) => {
@@ -367,7 +399,7 @@ export default function Home() {
           tool={activeTool}
           job={selectedJob}
           updateJob={updateJob}
-          replaceJobFile={replaceJobFile}
+          replaceJobFile={handleReplaceJobFile}
           onBackgroundChange={handleBackgroundChange}
           onApplyToAll={applyToAll}
           crop={crop}

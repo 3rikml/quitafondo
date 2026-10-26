@@ -364,6 +364,11 @@ async function handle(request: JobRequest): Promise<boolean> {
   const { value, device } = await getLoaded<unknown>(task, id);
   post({ id, type: "progress", ratio: DOWNLOAD_PROGRESS_SHARE[task] });
 
+  // A photo that cannot be decoded is the photo's fault, not the GPU's: fail
+  // here so it is reported as an ordinary error and never blames WebGPU.
+  // (Not for SAM clicks: they reuse the cached embedding and decode nothing.)
+  if (request.type !== "sam") (await createImageBitmap(request.image)).close();
+
   try {
     if (request.type === "inpaint") {
       post({ id, type: "inpainted", ...(await inpaint(value as ort.InferenceSession, request)) });

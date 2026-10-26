@@ -33,25 +33,44 @@ export async function saveJob(persisted: PersistedJob): Promise<void> {
 
 export async function loadAllJobs(): Promise<PersistedJob[]> {
   if (!isAvailable()) return [];
-  const db = await getDb();
-  return db.getAll(STORE_JOBS);
+  try {
+    const db = await getDb();
+    return await db.getAll(STORE_JOBS);
+  } catch (error) {
+    // Blocked storage (private mode, policy): start empty instead of failing the page.
+    console.warn("No se pudieron cargar las imágenes guardadas.", error);
+    return [];
+  }
 }
 
 export async function deleteJob(id: string): Promise<void> {
   if (!isAvailable()) return;
-  const db = await getDb();
-  await db.delete(STORE_JOBS, id);
+  try {
+    const db = await getDb();
+    await db.delete(STORE_JOBS, id);
+  } catch (error) {
+    console.warn("No se pudo borrar la imagen guardada.", error);
+  }
 }
 
 export async function saveSelectedJobId(id: string | null): Promise<void> {
   if (!isAvailable()) return;
-  const db = await getDb();
-  await db.put(STORE_META, id, META_SELECTED_JOB_ID);
+  try {
+    const db = await getDb();
+    await db.put(STORE_META, id, META_SELECTED_JOB_ID);
+  } catch (error) {
+    console.warn("No se pudo guardar la imagen seleccionada.", error);
+  }
 }
 
 export async function loadSelectedJobId(): Promise<string | null> {
   if (!isAvailable()) return null;
-  const db = await getDb();
-  const value = await db.get(STORE_META, META_SELECTED_JOB_ID);
-  return value ?? null;
+  try {
+    const db = await getDb();
+    const value = await db.get(STORE_META, META_SELECTED_JOB_ID);
+    return value ?? null;
+  } catch (error) {
+    console.warn("No se pudo leer la imagen seleccionada.", error);
+    return null;
+  }
 }

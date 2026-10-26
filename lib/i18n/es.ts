@@ -29,6 +29,7 @@ export const es = {
   "download.all": "Descargar todo (ZIP)",
   "download.allCount": "Descargar todo · {count} imágenes",
   "download.done": "Imagen descargada",
+  "download.failed": "No se pudo descargar la imagen",
   "download.copied": "Imagen copiada al portapapeles",
 
   "welcome.title": "Quita el fondo de tus fotos",
@@ -59,6 +60,7 @@ export const es = {
   "queue.remove": "Quitar {name} de la lista",
   "queue.zipNoneProcessed": "No se pudo generar el ZIP: ninguna imagen se pudo procesar.",
   "queue.zipPartial": "{failed} de {total} imagen(es) no se pudieron incluir en el ZIP.",
+  "queue.saveFailed": "No se pudo guardar tu trabajo en este navegador; se perderá al recargar.",
   "queue.zipFailed": "No se pudo generar el ZIP. Intenta de nuevo.",
   "queue.downscaled": "Reducida a {width}×{height} px para procesarla en el navegador",
 
