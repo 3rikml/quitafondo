@@ -104,7 +104,7 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
     if (!handle || !overrides || !fit || !sourceSize) return;
 
     const target = canvasToSourceCoords(canvas, fit, clientX, clientY);
-    const sourcePixels = smart ? handle.getSourcePixels() : null;
+    const sourcePixels = handle.getSourcePixels();
     if (startOfStroke) lastDabRef.current = null;
     // The smart brush floods per dab, so it gets fewer, wider-spaced ones.
     const spacing = smart ? brushSize : brushSize * 0.35;
@@ -112,7 +112,7 @@ export function useRetouch(selectedJobId: string | null, canvasHandleRef: RefObj
       if (smart && sourcePixels) {
         paintSmartBrushStroke(overrides, sourcePixels, x, y, brushSize, mode, tolerance, smartScratchRef.current);
       } else {
-        paintBrushStroke(overrides, sourceSize.width, sourceSize.height, x, y, brushSize, mode, hardness);
+        paintBrushStroke(overrides, sourceSize.width, sourceSize.height, x, y, brushSize, mode, hardness, sourcePixels?.data);
       }
     });
     lastDabRef.current = target;

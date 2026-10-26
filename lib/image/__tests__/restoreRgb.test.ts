@@ -100,4 +100,24 @@ describe("substituteRestoredRgb", () => {
     substituteRestoredRgb(cutout, original, modelAlpha, overrides);
     expect(Array.from(cutout.data)).toEqual([0, 0, 0, 255]);
   });
+
+  it("also repairs the color of nearly transparent pixels, whose decoded RGB is too coarse", () => {
+    const cutout = buffer([[3, 0, 9, 255]]);
+    const original = buffer([[120, 80, 40, 255]]);
+    const modelAlpha = new Uint8ClampedArray([6]);
+    const overrides = createOverrideBuffer(1);
+    overrides[0] = 255;
+
+    expect(Array.from(substituteRestoredRgb(cutout, original, modelAlpha, overrides).data)).toEqual([120, 80, 40, 255]);
+  });
+
+  it("repairs a partially restored pixel (soft brush) the same way", () => {
+    const cutout = buffer([[0, 0, 0, 120]]);
+    const original = buffer([[120, 80, 40, 255]]);
+    const modelAlpha = new Uint8ClampedArray([0]);
+    const overrides = createOverrideBuffer(1);
+    overrides[0] = 120;
+
+    expect(Array.from(substituteRestoredRgb(cutout, original, modelAlpha, overrides).data)).toEqual([120, 80, 40, 120]);
+  });
 });

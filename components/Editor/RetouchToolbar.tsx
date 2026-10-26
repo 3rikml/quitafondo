@@ -2,6 +2,7 @@
 
 import { Bandage, Eraser, MousePointerClick, PaintbrushVertical, Sparkles, Trash2, Undo2 } from "lucide-react";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
+import { NO_OVERRIDE } from "@/lib/image/alphaCompose";
 import { canvasPointToSource, type FitResult } from "@/lib/image/canvasFit";
 
 import { Button } from "@/components/ui/button";
@@ -248,7 +249,9 @@ export function paintBrushStroke(
   centerY: number,
   radius: number,
   mode: RetouchMode,
-  hardness = 1
+  hardness = 1,
+  /** The model's RGBA pixels, so a soft edge can blend with the alpha that is actually there. */
+  modelRgba?: ArrayLike<number>
 ) {
   const clampedHardness = Math.min(Math.max(hardness, 0), 1);
   const target = mode === "erase" ? 0 : 255;
@@ -272,7 +275,12 @@ export function paintBrushStroke(
         overrideAlpha[index] = target;
       } else {
         const t = (radius - dist) / (radius - falloffStart); // 1 at falloffStart, 0 at radius
-        overrideAlpha[index] = Math.round(target * t + rimTarget * (1 - t));
+        const feathered = Math.round(target * t + rimTarget * (1 - t));
+        // A soft edge only ever moves the pixel toward the stroke's target: the
+        // next dab of the same stroke (or an earlier stroke) must not be undone,
+        // and erasing must never make a transparent pixel more visible.
+        const current = overrideAlpha[index] === NO_OVERRIDE ? (modelRgba?.[index * 4 + 3] ?? rimTarget) : overrideAlpha[index];
+        overrideAlpha[index] = mode === "erase" ? Math.min(current, feathered) : Math.max(current, feathered);
       }
     }
   }

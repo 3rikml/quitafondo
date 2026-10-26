@@ -72,3 +72,26 @@ describe("paintBrushStroke — hardness", () => {
     expect(Array.from(withDefault)).toEqual(Array.from(explicitHard));
   });
 });
+
+describe("paintBrushStroke — soft edges accumulate", () => {
+  it("a later dab's feathered rim never undoes an earlier dab's erased center", () => {
+    const overrides = createOverrideBuffer(WIDTH * HEIGHT);
+    paintBrushStroke(overrides, WIDTH, HEIGHT, 20, 20, 10, "erase", 0);
+    paintBrushStroke(overrides, WIDTH, HEIGHT, 24, 20, 10, "erase", 0);
+    expect(overrides[20 * WIDTH + 20]).toBe(0);
+  });
+
+  it("a later restore dab's rim never undoes an earlier restored center", () => {
+    const overrides = createOverrideBuffer(WIDTH * HEIGHT);
+    paintBrushStroke(overrides, WIDTH, HEIGHT, 20, 20, 10, "restore", 0);
+    paintBrushStroke(overrides, WIDTH, HEIGHT, 24, 20, 10, "restore", 0);
+    expect(overrides[20 * WIDTH + 20]).toBe(255);
+  });
+
+  it("erasing with a soft edge never makes a pixel the model removed visible again", () => {
+    const modelRgba = new Uint8ClampedArray(WIDTH * HEIGHT * 4); // alpha 0 everywhere
+    const overrides = createOverrideBuffer(WIDTH * HEIGHT);
+    paintBrushStroke(overrides, WIDTH, HEIGHT, 20, 20, 10, "erase", 0, modelRgba);
+    expect(overrides[20 * WIDTH + 29]).toBe(0);
+  });
+});
