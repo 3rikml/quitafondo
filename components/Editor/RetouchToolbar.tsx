@@ -3,6 +3,7 @@
 import { Bandage, Eraser, MousePointerClick, PaintbrushVertical, Sparkles, Trash2, Undo2 } from "lucide-react";
 import type { PixelBuffer } from "@/lib/image/pixelBuffer";
 import { NO_OVERRIDE } from "@/lib/image/alphaCompose";
+import type { MagicMode } from "@/lib/ai/samMask";
 import { canvasPointToSource, type FitResult } from "@/lib/image/canvasFit";
 
 import { Button } from "@/components/ui/button";
@@ -41,10 +42,10 @@ export interface RetouchToolbarProps {
   onToleranceChange: (tolerance: number) => void;
   tool: RetouchTool;
   onToolChange: (tool: RetouchTool) => void;
-  /** Magic selection: whether a click adds the object back (vs. removing it), and its status line. */
+  /** Magic selection: what a click does with the object (remove it, add it back, keep only it), and its status line. */
   magic: {
-    add: boolean;
-    onAddChange: (add: boolean) => void;
+    mode: MagicMode;
+    onModeChange: (mode: MagicMode) => void;
     statusText: string | null;
     /** Candidate sizes for the last click (smallest first), when there is a choice. */
     sizes: { count: number; index: number } | null;
@@ -61,6 +62,12 @@ export interface RetouchToolbarProps {
     onUndo: () => void;
   };
 }
+
+const MAGIC_HINT = {
+  remove: "retouch.magicHintRemove",
+  add: "retouch.magicHintAdd",
+  only: "retouch.magicHintOnly",
+} as const;
 
 export function RetouchToolbar({
   mode,
@@ -124,15 +131,16 @@ export function RetouchToolbar({
 
       {tool === "magic" && (
         <PanelSection title={t("retouch.magic")}>
-          <Tabs value={magic.add ? "add" : "remove"} onValueChange={(next) => magic.onAddChange(next === "add")}>
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs value={magic.mode} onValueChange={(next) => magic.onModeChange(next as MagicMode)}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="remove">{t("retouch.magicRemove")}</TabsTrigger>
               <TabsTrigger value="add">{t("retouch.magicAdd")}</TabsTrigger>
+              <TabsTrigger value="only">{t("retouch.magicOnly")}</TabsTrigger>
             </TabsList>
           </Tabs>
           <PanelHint className="flex items-start gap-1.5">
             <MousePointerClick className="mt-0.5 size-3.5 shrink-0" />
-            {t(magic.add ? "retouch.magicHintAdd" : "retouch.magicHintRemove")}
+            {t(MAGIC_HINT[magic.mode])}
           </PanelHint>
           {magic.sizes && (
             <div className="flex flex-col gap-1.5">

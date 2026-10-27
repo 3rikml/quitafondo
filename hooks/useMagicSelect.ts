@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { ImageJob } from "@/lib/types";
 import { runMagicSelect } from "@/lib/ai/client";
-import { applyMaskToOverrides } from "@/lib/ai/samMask";
+import { applyMagicMask, type MagicMode } from "@/lib/ai/samMask";
 import { NO_OVERRIDE } from "@/lib/image/alphaCompose";
 import { t } from "@/lib/i18n";
 import type { HistoryEntry } from "@/hooks/useEditorHistory";
@@ -34,7 +34,7 @@ interface LastSelection {
   before: HistoryEntry;
   masks: Uint8Array[];
   index: number;
-  add: boolean;
+  mode: MagicMode;
 }
 
 /**
@@ -45,7 +45,7 @@ interface LastSelection {
  * most confident is applied and the others stay one click away.
  */
 export function useMagicSelect({ selectedJob, active, overridesByJobIdRef, history, onOverridesChanged }: MagicSelectDeps) {
-  const [add, setAdd] = useState(false);
+  const [mode, setMode] = useState<MagicMode>("remove");
   const [status, setStatus] = useState<MagicStatus>({ kind: "idle" });
   const originalRef = useRef<{ url: string; blob: Promise<Blob> } | null>(null);
   const preparedKeyRef = useRef<string | null>(null);
@@ -94,18 +94,18 @@ export function useMagicSelect({ selectedJob, active, overridesByJobIdRef, histo
   }, [active, jobUrl]);
 
   /** Re-applies a mask onto the state before the click, in place (EditorCanvas holds that buffer). */
-  function applyOnto(jobId: string, before: HistoryEntry, mask: Uint8Array, addObject: boolean): boolean {
+  function applyOnto(jobId: string, before: HistoryEntry, mask: Uint8Array, clickMode: MagicMode): boolean {
     const overrides = overridesByJobIdRef.current.get(jobId);
     if (!overrides || mask.length !== overrides.length) return false;
     if (before.overrideSnapshot.length === overrides.length) overrides.set(before.overrideSnapshot);
     else overrides.fill(NO_OVERRIDE);
-    applyMaskToOverrides(overrides, mask, addObject);
+    applyMagicMask(overrides, mask, clickMode);
     onOverridesChanged();
     return true;
   }
 
-  /** Selects the object at source pixel (x, y) and removes it, or adds it back when `addObject`. */
-  async function selectAt(x: number, y: number, addObject: boolean) {
+  /** Applies `clickMode` to the object at source pixel (x, y): remove it, add it back, or keep only it. */
+  async function selectAt(x: number, y: number, clickMode: MagicMode) {
     const job = selectedJob;
     if (!job || !jobUrl || status.kind === "working") return;
     setStatus({ kind: "working" });
@@ -115,9 +115,9 @@ export function useMagicSelect({ selectedJob, active, overridesByJobIdRef, histo
       ]);
       preparedKeyRef.current = jobUrl;
       const before = history.snapshot(job);
-      if (masks.length > 0 && applyOnto(job.id, before, masks[best], addObject)) {
+      if (masks.length > 0 && applyOnto(job.id, before, masks[best], clickMode)) {
         history.record(job.id, before);
-        setLast({ jobId: job.id, before, masks, index: best, add: addObject });
+        setLast({ jobId: job.id, before, masks, index: best, mode: clickMode });
       }
       setStatus({ kind: "ready" });
     } catch (error) {
@@ -128,7 +128,7 @@ export function useMagicSelect({ selectedJob, active, overridesByJobIdRef, histo
   /** Swaps the last click's result for another candidate size (same undo step). */
   function chooseSize(index: number) {
     if (!lastValid || index === last.index || !last.masks[index]) return;
-    if (applyOnto(last.jobId, last.before, last.masks[index], last.add)) setLast({ ...last, index });
+    if (applyOnto(last.jobId, last.before, last.masks[index], last.mode)) setLast({ ...last, index });
   }
 
   /** Drops the pending size choice, e.g. after undo/redo changed the mask underneath it. */
@@ -137,8 +137,8 @@ export function useMagicSelect({ selectedJob, active, overridesByJobIdRef, histo
   }
 
   return {
-    add,
-    setAdd,
+    mode,
+    setMode,
     status,
     selectAt,
     /** Size options for the last click, smallest first; null when there is nothing to adjust. */

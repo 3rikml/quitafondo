@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { applyMaskToOverrides, rankMasks } from "../samMask";
+import { applyMagicMask, applyMaskToOverrides, flipMagicMode, rankMasks } from "../samMask";
 import { NO_OVERRIDE, createOverrideBuffer } from "@/lib/image/alphaCompose";
 
 describe("rankMasks", () => {
@@ -40,5 +40,33 @@ describe("applyMaskToOverrides", () => {
     const overrides = createOverrideBuffer(2);
     applyMaskToOverrides(overrides, Uint8Array.from([255, 255]), false);
     expect(Array.from(overrides)).toEqual([0, 0]);
+  });
+});
+
+describe("applyMagicMask", () => {
+  const mask = Uint8Array.from([1, 1, 0, 0]);
+
+  it("removes or adds the clicked object like applyMaskToOverrides", () => {
+    const removed = createOverrideBuffer(4);
+    applyMagicMask(removed, mask, "remove");
+    expect(Array.from(removed)).toEqual([0, 0, NO_OVERRIDE, NO_OVERRIDE]);
+    const added = createOverrideBuffer(4);
+    applyMagicMask(added, mask, "add");
+    expect(Array.from(added)).toEqual([255, 255, NO_OVERRIDE, NO_OVERRIDE]);
+  });
+
+  it("'only' hides everything outside the clicked object and leaves the object as it was", () => {
+    const overrides = createOverrideBuffer(4);
+    overrides[0] = 255; // already restored by hand inside the object
+    const changed = applyMagicMask(overrides, mask, "only");
+    expect(Array.from(overrides)).toEqual([255, NO_OVERRIDE, 0, 0]);
+    expect(changed).toBe(2);
+  });
+
+  it("flips remove and add with Alt, and 'only' becomes remove", () => {
+    expect(flipMagicMode("remove", true)).toBe("add");
+    expect(flipMagicMode("add", true)).toBe("remove");
+    expect(flipMagicMode("only", true)).toBe("remove");
+    expect(flipMagicMode("only", false)).toBe("only");
   });
 });

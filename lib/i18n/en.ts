@@ -190,6 +190,8 @@ export const en: Record<MessageKey, string> = {
   "retouch.sensitivity": "Sensitivity",
   "retouch.magicRemove": "Remove object",
   "retouch.magicAdd": "Add object",
+  "retouch.magicOnly": "Keep only",
+  "retouch.magicHintOnly": "Click the object you want to keep: everything else is removed from the cutout. Hold Alt/⌥ to remove it instead.",
   "retouch.magicHintRemove": "Click an object to remove it from the cutout. Hold Alt/⌥ to do the opposite.",
   "retouch.magicHintAdd": "Click an object to add it to the cutout. Hold Alt/⌥ to do the opposite.",
   "retouch.selectionSize": "Selection size",

@@ -30,6 +30,7 @@ import { Filmstrip } from "@/components/editor-ui/Filmstrip";
 import { WelcomeView } from "@/components/editor-ui/WelcomeView";
 import { StageHint, ZoomPill } from "@/components/editor-ui/StageControls";
 import { BrushCursor, type BrushCursorVariant } from "@/components/editor-ui/BrushCursor";
+import { flipMagicMode } from "@/lib/ai/samMask";
 import { useStageNavigation } from "@/hooks/useStageNavigation";
 import { DropHint, UnsupportedBrowserBanner } from "@/components/editor-ui/Overlays";
 import { TOOLS, type EditorTool } from "@/components/editor-ui/tools";
@@ -215,7 +216,7 @@ export default function Home() {
       if (!canvas || !fit) return;
       const { x, y } = canvasToSourceCoords(canvas, fit, e.clientX, e.clientY);
       // Alt/Option flips the action, so both are one click away.
-      magic.selectAt(x, y, magic.add !== e.altKey);
+      magic.selectAt(x, y, flipMagicMode(magic.mode, e.altKey));
       return;
     }
     if (retouchActive) {
@@ -429,8 +430,8 @@ export default function Home() {
           retouch={{
             ...retouch.toolbarProps,
             magic: {
-              add: magic.add,
-              onAddChange: magic.setAdd,
+              mode: magic.mode,
+              onModeChange: magic.setMode,
               statusText: magicStatusText(magic.status),
               sizes: magic.sizes,
               onSizeChange: magic.chooseSize,

@@ -190,6 +190,8 @@ export const es = {
   "retouch.sensitivity": "Sensibilidad",
   "retouch.magicRemove": "Quitar objeto",
   "retouch.magicAdd": "Agregar objeto",
+  "retouch.magicOnly": "Solo este",
+  "retouch.magicHintOnly": "Haz clic en el objeto que quieres conservar: todo lo demás se quita del recorte. Mantén Alt/⌥ para quitarlo a él.",
   "retouch.magicHintRemove": "Haz clic en un objeto para quitarlo del recorte. Mantén Alt/⌥ para hacer lo contrario.",
   "retouch.magicHintAdd": "Haz clic en un objeto para agregarlo al recorte. Mantén Alt/⌥ para hacer lo contrario.",
   "retouch.selectionSize": "Tamaño de la selección",

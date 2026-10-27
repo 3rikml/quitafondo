@@ -50,3 +50,29 @@ export function applyMaskToOverrides(overrides: Int16Array, mask: Uint8Array, ad
   }
   return changed;
 }
+
+/** What a magic click does with the object under it. */
+export type MagicMode = "remove" | "add" | "only";
+
+/** Alt/Option swaps removing and adding; with "only" it removes the object instead. */
+export function flipMagicMode(mode: MagicMode, altKey: boolean): MagicMode {
+  if (!altKey) return mode;
+  return mode === "remove" ? "add" : "remove";
+}
+
+/**
+ * Applies a magic click. "only" keeps the object and hides everything else, so
+ * a photo with several people or products becomes a cutout of just the one
+ * that was clicked. Returns how many pixels changed.
+ */
+export function applyMagicMask(overrides: Int16Array, mask: Uint8Array, mode: MagicMode): number {
+  if (mode !== "only") return applyMaskToOverrides(overrides, mask, mode === "add");
+  let changed = 0;
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i] && overrides[i] !== 0) {
+      overrides[i] = 0;
+      changed++;
+    }
+  }
+  return changed;
+}
