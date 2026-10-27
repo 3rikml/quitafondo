@@ -42,6 +42,7 @@ import {
   withAlphaOf,
 } from "./inpaintRegion";
 import { featherAlpha, shiftEdge } from "../image/edgeRefine";
+import { refineEdgeAlpha } from "../image/edgeMatting";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -287,7 +288,10 @@ async function encodePng(data: Uint8ClampedArray, width: number, height: number)
 
 async function segment(runner: BackgroundRemovalPipeline, image: Blob): Promise<Blob> {
   const output = (await runner(await RawImage.fromBlob(image))) as RawImage;
-  return encodePng(new Uint8ClampedArray(output.data), output.width, output.height);
+  const pixels = new Uint8ClampedArray(output.data);
+  // The model's mask is enlarged from ~1024 px, which blurs the edge; snap it to the photo's real contours.
+  if (output.channels === 4) refineEdgeAlpha(pixels, output.width, output.height);
+  return encodePng(pixels, output.width, output.height);
 }
 
 /** Upscales tile by tile so memory stays bounded whatever the photo size. */
