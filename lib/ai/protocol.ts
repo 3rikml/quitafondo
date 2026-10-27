@@ -20,6 +20,8 @@ export interface MagicPoint {
 export type WorkerRequest =
   /** Sent before any job to run `task` on WASM only (see `gpu-failed`). */
   | { type: "force-wasm"; task: AiTask }
+  /** The user's cutout-quality choice; see `HIGH_QUALITY_FALLBACK_MODEL`. */
+  | { type: "set-quality"; high: boolean }
   | { type: "run"; task: "segment" | "upscale"; id: number; image: Blob }
   /**
    * Magic selection. The worker keeps the SAM image embedding of the last
@@ -34,7 +36,7 @@ export type WorkerRequest =
    */
   | { type: "inpaint"; id: number; image: Blob; cutout: Blob; mask: Uint8Array; width: number; height: number };
 
-export type JobRequest = Exclude<WorkerRequest, { type: "force-wasm" }>;
+export type JobRequest = Exclude<WorkerRequest, { type: "force-wasm" | "set-quality" }>;
 
 /** Which model a job needs. */
 export function taskOf(request: JobRequest): AiTask {
@@ -84,6 +86,18 @@ export const HIGH_QUALITY_MODEL: AiModel = {
  */
 export const COMPATIBLE_MODEL: AiModel = {
   id: "imgly/isnet-general-onnx",
+  dtype: "fp16",
+};
+
+/**
+ * Optional "maximum quality" for machines that cannot run BiRefNet (every Apple
+ * Silicon Mac): BEN2 (MIT, ~219 MB in fp16). On real photos it keeps hair and
+ * fur far better than IS-Net and leaves no translucent patches on the
+ * background, but it fails on those adapters' WebGPU (buffer allocation) and
+ * so runs on the CPU, about 50-65 s a photo instead of ~7 s.
+ */
+export const HIGH_QUALITY_FALLBACK_MODEL: AiModel = {
+  id: "onnx-community/BEN2-ONNX",
   dtype: "fp16",
 };
 

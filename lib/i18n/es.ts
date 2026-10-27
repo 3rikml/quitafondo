@@ -20,6 +20,8 @@ export const es = {
   "topbar.theme": "Tema",
   "topbar.themeDark": "Oscuro",
   "topbar.themeLight": "Claro",
+  "topbar.highQuality": "Recorte de máxima calidad",
+  "topbar.highQualityHint": "Conserva mejor el pelo y los bordes, pero es más lento (~1 min por foto) y descarga ~220 MB la primera vez. Solo cambia algo en equipos sin una GPU compatible con el mejor modelo, como los Mac con Apple Silicon. Se aplica a las próximas fotos.",
   "topbar.language": "Idioma",
 
   "download.menu": "Opciones de descarga",
@@ -65,7 +67,7 @@ export const es = {
   "queue.downscaled": "Reducida a {width}×{height} px para procesarla en el navegador",
 
   "canvas.waiting": "En espera…",
-  "canvas.downloadingModel": "Descargando el modelo de IA (solo la primera vez)… {percent}%",
+  "canvas.downloadingModel": "Descargando el modelo de IA, entre 90 y 220 MB (solo la primera vez)… {percent}%",
   "canvas.removing": "Quitando el fondo…",
   "canvas.failed": "No se pudo quitar el fondo",
 
@@ -198,7 +200,7 @@ export const es = {
   "retouch.size.small": "Pequeña",
   "retouch.size.medium": "Mediana",
   "retouch.size.large": "Grande",
-  "retouch.magicPreparing": "Analizando la imagen… {percent}%",
+  "retouch.magicPreparing": "Analizando la imagen… {percent}% (la primera vez descarga un modelo de unos 25 MB)",
   "retouch.magicWorking": "Seleccionando…",
   "retouch.magicError": "No se pudo usar la selección mágica: {message}",
   "retouch.eraser": "Borrador",

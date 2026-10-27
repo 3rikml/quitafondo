@@ -47,6 +47,39 @@ function rememberWebGpuBroken(task: AiTask): void {
   }
 }
 
+const HIGH_QUALITY_KEY = "quitafondo:high-quality";
+const qualityListeners = new Set<() => void>();
+
+function readHighQuality(): boolean {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(HIGH_QUALITY_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** The "maximum quality cutout" preference; read it with `useHighQuality`. */
+export function setHighQuality(high: boolean): void {
+  try {
+    localStorage.setItem(HIGH_QUALITY_KEY, high ? "1" : "0");
+  } catch {
+    // Blocked storage: the choice only lasts for this visit.
+  }
+  memoryHighQuality = high;
+  if (worker) send(worker, { type: "set-quality", high });
+  qualityListeners.forEach((listener) => listener());
+}
+let memoryHighQuality: boolean | null = null;
+
+export function subscribeHighQuality(listener: () => void): () => void {
+  qualityListeners.add(listener);
+  return () => qualityListeners.delete(listener);
+}
+
+export function getHighQuality(): boolean {
+  return memoryHighQuality ?? readHighQuality();
+}
+
 function send(target: Worker, message: WorkerRequest): void {
   target.postMessage(message);
 }
@@ -65,6 +98,7 @@ function getWorker(): Worker {
   if (worker) return worker;
   const created = new Worker(new URL("./ai.worker.ts", import.meta.url), { type: "module" });
   for (const task of wasmOnlyTasks) send(created, { type: "force-wasm", task });
+  send(created, { type: "set-quality", high: getHighQuality() });
   created.onmessage = (event: MessageEvent<WorkerResponse>) => {
     const message = event.data;
     const request = pending.get(message.id);

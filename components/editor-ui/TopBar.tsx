@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Columns2, Redo2, Scissors, Settings2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IconButton } from "@/components/IconButton";
+import { Switch } from "@/components/ui/switch";
+import { getHighQuality, setHighQuality, subscribeHighQuality } from "@/lib/ai/client";
 import { setLocale, useLocale, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { ShortcutsList } from "./ShortcutsList";
@@ -56,6 +58,7 @@ export function TopBar({
   const t = useT();
   const locale = useLocale();
   const [theme, setTheme] = useTheme();
+  const highQuality = useSyncExternalStore(subscribeHighQuality, getHighQuality, () => false);
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-card px-3 sm:px-4">
@@ -114,6 +117,15 @@ export function TopBar({
                   <TabsTrigger value="en">English</TabsTrigger>
                 </TabsList>
               </Tabs>
+            </div>
+            <div className="flex flex-col gap-1.5 border-t pt-3">
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="high-quality" className="text-sm">
+                  {t("topbar.highQuality")}
+                </label>
+                <Switch id="high-quality" checked={highQuality} onCheckedChange={setHighQuality} />
+              </div>
+              <p className="text-xs text-muted-foreground">{t("topbar.highQualityHint")}</p>
             </div>
             <div className="flex flex-col gap-2 border-t pt-3">
               <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">

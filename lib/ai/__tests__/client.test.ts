@@ -7,6 +7,7 @@ class FakeWorker {
   onmessage: ((event: MessageEvent<WorkerResponse>) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
   wasmOnly = new Set<string>();
+  qualityMessages: boolean[] = [];
   terminated = false;
 
   constructor() {
@@ -16,6 +17,10 @@ class FakeWorker {
   postMessage(request: WorkerRequest) {
     if (request.type === "force-wasm") {
       this.wasmOnly.add(request.task);
+      return;
+    }
+    if (request.type === "set-quality") {
+      this.qualityMessages.push(request.high);
       return;
     }
     const { id, image } = request;
@@ -50,7 +55,7 @@ beforeAll(() => {
   vi.stubGlobal("Worker", FakeWorker);
 });
 
-import { runAiTask, runMagicSelect } from "../client";
+import { getHighQuality, runAiTask, runMagicSelect, setHighQuality } from "../client";
 
 describe("runAiTask", () => {
   it("resolves with the result the worker returns for each task", async () => {
@@ -89,5 +94,20 @@ describe("runAiTask", () => {
     const { masks, width, height } = await runMagicSelect("k", image, [{ x: 0, y: 0, positive: true }]);
     expect(Array.from(masks[0])).toEqual([255, 0]);
     expect([width, height]).toEqual([2, 1]);
+  });
+});
+
+describe("high quality preference", () => {
+  it("is off by default, can be switched on, and is told to the worker", async () => {
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: vi.fn() });
+    expect(getHighQuality()).toBe(false);
+    // A job makes sure a worker exists; it is created with the current choice.
+    await runAiTask("segment", new Blob(["fake-source"], { type: "image/png" }));
+    const worker = FakeWorker.instances[FakeWorker.instances.length - 1];
+    setHighQuality(true);
+    expect(getHighQuality()).toBe(true);
+    expect(worker.qualityMessages[worker.qualityMessages.length - 1]).toBe(true);
+    setHighQuality(false);
+    expect(worker.qualityMessages[worker.qualityMessages.length - 1]).toBe(false);
   });
 });

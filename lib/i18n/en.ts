@@ -22,6 +22,8 @@ export const en: Record<MessageKey, string> = {
   "topbar.theme": "Theme",
   "topbar.themeDark": "Dark",
   "topbar.themeLight": "Light",
+  "topbar.highQuality": "Maximum quality cutout",
+  "topbar.highQualityHint": "Keeps hair and edges better, but is slower (~1 min per photo) and downloads ~220 MB the first time. Only changes anything on machines without a GPU that fits the best model, such as Apple Silicon Macs. Applies to the next photos.",
   "topbar.language": "Language",
 
   "download.menu": "Download options",
@@ -67,7 +69,7 @@ export const en: Record<MessageKey, string> = {
   "queue.downscaled": "Reduced to {width}×{height} px to process it in the browser",
 
   "canvas.waiting": "Waiting…",
-  "canvas.downloadingModel": "Downloading the AI model (first time only)… {percent}%",
+  "canvas.downloadingModel": "Downloading the AI model, 90 to 220 MB (first time only)… {percent}%",
   "canvas.removing": "Removing the background…",
   "canvas.failed": "Could not remove the background",
 
@@ -198,7 +200,7 @@ export const en: Record<MessageKey, string> = {
   "retouch.size.small": "Small",
   "retouch.size.medium": "Medium",
   "retouch.size.large": "Large",
-  "retouch.magicPreparing": "Analyzing the image… {percent}%",
+  "retouch.magicPreparing": "Analyzing the image… {percent}% (the first time it downloads a model of about 25 MB)",
   "retouch.magicWorking": "Selecting…",
   "retouch.magicError": "Magic selection failed: {message}",
   "retouch.eraser": "Eraser",

@@ -14,6 +14,7 @@ import {
 import * as ort from "onnxruntime-web/webgpu";
 import {
   COMPATIBLE_MODEL,
+  HIGH_QUALITY_FALLBACK_MODEL,
   DOWNLOAD_PROGRESS_SHARE,
   HIGH_QUALITY_MODEL,
   INPAINT_MODEL_BYTES,
@@ -82,6 +83,8 @@ const INPAINT_BACKEND: Backend = { device: "wasm", model: { id: INPAINT_MODEL_UR
 const loaded = new Map<AiTask, Promise<Loaded<unknown>>>();
 /** Tasks whose WebGPU run failed before (told by the client): WASM only. */
 const wasmOnlyTasks = new Set<AiTask>();
+/** The user asked for the best cutout even if it is slow (only matters without BiRefNet). */
+let preferHighQuality = false;
 
 function post(message: WorkerResponse, transfer: Transferable[] = []): void {
   self.postMessage(message, transfer);
@@ -101,7 +104,7 @@ function wasmBackend(task: AiTask): Backend {
   if (task === "inpaint") return INPAINT_BACKEND;
   if (task === "upscale") return { device: "wasm", model: UPSCALE_MODELS.wasm };
   if (task === "sam") return { device: "wasm", model: SAM_MODELS.wasm };
-  return { device: "wasm", model: COMPATIBLE_MODEL };
+  return { device: "wasm", model: preferHighQuality ? HIGH_QUALITY_FALLBACK_MODEL : COMPATIBLE_MODEL };
 }
 
 /** The best model/device pair this browser can run for `task`, best first. */
@@ -112,7 +115,10 @@ async function pickBackend(task: AiTask): Promise<Backend> {
   if (task === "upscale") return { device: "webgpu", model: UPSCALE_MODELS.webgpu };
   if (task === "sam") return { device: "webgpu", model: SAM_MODELS.webgpu };
   const fitsHighQuality = adapter.limits.maxStorageBuffersPerShaderStage >= MIN_STORAGE_BUFFERS_PER_SHADER_STAGE;
-  return { device: "webgpu", model: fitsHighQuality ? HIGH_QUALITY_MODEL : COMPATIBLE_MODEL };
+  if (fitsHighQuality) return { device: "webgpu", model: HIGH_QUALITY_MODEL };
+  // BEN2 cannot allocate its buffers on these adapters: go straight to the CPU.
+  if (preferHighQuality) return wasmBackend(task);
+  return { device: "webgpu", model: COMPATIBLE_MODEL };
 }
 
 function load(task: AiTask, { device, model }: Backend): Promise<unknown> {
@@ -406,6 +412,13 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
   if (request.type === "force-wasm") {
     wasmOnlyTasks.add(request.task);
+    return;
+  }
+  if (request.type === "set-quality") {
+    if (preferHighQuality !== request.high) {
+      preferHighQuality = request.high;
+      loaded.delete("segment"); // the next cutout loads the other model
+    }
     return;
   }
   const task = taskOf(request);
