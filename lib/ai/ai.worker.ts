@@ -43,6 +43,7 @@ import {
 } from "./inpaintRegion";
 import { featherAlpha, shiftEdge } from "../image/edgeRefine";
 import { refineEdgeAlpha } from "../image/edgeMatting";
+import { removeTranslucentGhosts } from "../image/ghostCleanup";
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -290,7 +291,10 @@ async function segment(runner: BackgroundRemovalPipeline, image: Blob): Promise<
   const output = (await runner(await RawImage.fromBlob(image))) as RawImage;
   const pixels = new Uint8ClampedArray(output.data);
   // The model's mask is enlarged from ~1024 px, which blurs the edge; snap it to the photo's real contours.
-  if (output.channels === 4) refineEdgeAlpha(pixels, output.width, output.height);
+  if (output.channels === 4) {
+    removeTranslucentGhosts(pixels, output.width, output.height);
+    refineEdgeAlpha(pixels, output.width, output.height);
+  }
   return encodePng(pixels, output.width, output.height);
 }
 
