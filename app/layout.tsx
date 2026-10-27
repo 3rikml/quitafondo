@@ -25,6 +25,13 @@ export const metadata: Metadata = {
   title: "QuitaFondo",
   description: "Quita fondos de imágenes 100% en tu navegador, sin subir nada a internet.",
   applicationName: "QuitaFondo",
+  openGraph: {
+    title: "QuitaFondo",
+    description: "Quita fondos de imágenes 100% en tu navegador, sin subir nada a internet.",
+    siteName: "QuitaFondo",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "QuitaFondo" },
   icons: {
     icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
     apple: "/icons/apple-touch-icon.png",
