@@ -59,7 +59,7 @@ export function Filmstrip({ jobs, selectedJobId, onSelect, onRemove, onAddFiles 
               title={job.notice ?? job.errorMessage ?? job.fileName}
               className={cn(
                 "relative block size-14 overflow-hidden rounded-lg bg-muted ring-offset-2 ring-offset-card transition outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                selected ? "ring-2 ring-primary" : "opacity-80 hover:opacity-100"
+                selected ? "qf-glow ring-2 ring-primary" : "opacity-80 hover:-translate-y-0.5 hover:opacity-100"
               )}
             >
               {job.originalUrl && (

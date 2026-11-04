@@ -184,6 +184,72 @@
   background-size: 20px 20px;
 }
 
+/* Polish: soft glows and small motions, all CSS so reduced-motion clamps them. */
+.qf-glow {
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--primary) 35%, transparent),
+    0 6px 22px -8px color-mix(in oklch, var(--primary) 65%, transparent);
+}
+
+/* Diagonal shine that sweeps across a button on hover. */
+.qf-shine {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.qf-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 35%, oklch(1 0 0 / 28%) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.7s ease;
+}
+.qf-shine:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+
+@keyframes qf-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.qf-float {
+  animation: qf-float 3.2s ease-in-out infinite;
+}
+
+/* Slow moving stripes on the model-download bar. */
+@keyframes qf-stripes {
+  to {
+    background-position: 28px 0;
+  }
+}
+.qf-bar-fill {
+  background-image: linear-gradient(
+    45deg,
+    oklch(1 0 0 / 18%) 25%,
+    transparent 25%,
+    transparent 50%,
+    oklch(1 0 0 / 18%) 50%,
+    oklch(1 0 0 / 18%) 75%,
+    transparent 75%
+  );
+  background-size: 28px 28px;
+  animation: qf-stripes 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qf-float,
+  .qf-bar-fill {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

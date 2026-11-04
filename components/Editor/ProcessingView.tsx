@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
+/** 0-100 while the model downloads, else null (the scan band covers the rest). */
+function downloadPercent(job: ImageJob): number | null {
+  if (job.status === "pending") return null;
+  const share = DOWNLOAD_PROGRESS_SHARE.segment;
+  if (job.progress != null && job.progress < share) return Math.round((job.progress / share) * 100);
+  return null;
+}
+
 function progressLabel(job: ImageJob, t: ReturnType<typeof useT>): string {
   if (job.status === "pending") return t("canvas.waiting");
   const share = DOWNLOAD_PROGRESS_SHARE.segment;
@@ -44,10 +52,20 @@ export function ProcessingView({ job, onRetry }: { job: ImageJob; onRetry: () =>
           </Button>
         </div>
       ) : (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
-          <LoaderCircle className="size-4 animate-spin" />
-          {progressLabel(job, t)}
-        </p>
+        <div className="flex w-64 max-w-full flex-col items-center gap-2.5">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
+            <LoaderCircle className="size-4 animate-spin" />
+            {progressLabel(job, t)}
+          </p>
+          {downloadPercent(job) != null && (
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+              <div
+                className="qf-bar-fill h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{ width: `${downloadPercent(job)}%` }}
+              />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

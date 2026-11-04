@@ -54,7 +54,7 @@ function Slider({
             key={index}
             // The accessible name belongs on the thumb's input, not the root.
             getAriaLabel={ariaLabel ? () => ariaLabel : undefined}
-            className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
+            className="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 shadow-[0_0_10px_-2px_color-mix(in_oklch,var(--primary)_70%,transparent)] transition-[color,box-shadow,transform] select-none after:absolute hover:scale-110 after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
           />
         ))}
       </SliderPrimitive.Control>

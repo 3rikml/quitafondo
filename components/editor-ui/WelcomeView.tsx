@@ -20,9 +20,9 @@ export function WelcomeView({ onFiles }: { onFiles: (files: File[]) => void }) {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="group flex w-full flex-col items-center gap-5 rounded-3xl border-2 border-dashed border-muted-foreground/25 bg-card/60 px-8 py-14 backdrop-blur transition-colors outline-none hover:border-primary/70 hover:bg-card focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-ring/30"
+          className="group flex w-full flex-col items-center gap-5 rounded-3xl border-2 border-dashed border-muted-foreground/25 bg-card/60 px-8 py-14 backdrop-blur transition-all duration-300 outline-none hover:-translate-y-0.5 hover:border-primary/70 hover:bg-card hover:shadow-[0_18px_50px_-20px_color-mix(in_oklch,var(--primary)_55%,transparent)] focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-ring/30"
         >
-          <span className="flex size-16 items-center justify-center rounded-2xl bg-primary/15 text-primary transition-transform group-hover:scale-105">
+          <span className="flex size-16 items-center justify-center rounded-2xl bg-primary/15 text-primary transition-transform group-hover:scale-110 qf-float">
             <ImagePlus className="size-8" strokeWidth={1.6} />
           </span>
           <span className="flex flex-col gap-2">
@@ -30,7 +30,7 @@ export function WelcomeView({ onFiles }: { onFiles: (files: File[]) => void }) {
             <span className="text-sm text-muted-foreground sm:text-base">{t("welcome.subtitle")}</span>
           </span>
           {/* Looks like a button but is plain text: the whole card is the one real button. */}
-          <span className={cn(buttonVariants(), "pointer-events-none h-10 px-5 text-sm font-semibold")}>
+          <span className={cn(buttonVariants(), "qf-shine qf-glow pointer-events-none h-10 px-5 text-sm font-semibold transition-transform group-hover:scale-[1.03] group-hover:after:translate-x-[120%]")}>
             {t("welcome.choose")}
           </span>
         </button>

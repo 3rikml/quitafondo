@@ -39,7 +39,7 @@ export function ToolRail({ active, onSelect, disabled, orientation }: ToolRailPr
             className={cn(
               "group flex flex-col items-center justify-center gap-1 rounded-xl text-[10.5px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40",
               vertical ? "h-[60px] w-[64px]" : "h-[52px] min-w-[60px] flex-1",
-              selected ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              selected ? "bg-primary/15 text-primary shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_30%,transparent)]" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
             <Icon className={cn("size-5 transition-transform", selected && "scale-105")} strokeWidth={1.75} />

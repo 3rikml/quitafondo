@@ -42,9 +42,9 @@ export function DownloadMenu({
       <Button
         onClick={onDownload}
         disabled={disabled || isDownloading}
-        className="h-9 rounded-r-none px-3.5 font-semibold"
+        className="qf-shine qf-glow group/dl h-9 rounded-r-none px-3.5 font-semibold"
       >
-        <Download />
+        <Download className="transition-transform group-hover/dl:translate-y-0.5" />
         {isDownloading ? t("toolbar.downloading") : t("toolbar.download", { format: format.toUpperCase() })}
       </Button>
       <Popover>
