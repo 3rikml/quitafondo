@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
+// One id per build: Next uses it for its own assets and the service worker
+// uses it to name (and so refresh) its cache.
+const buildId = Date.now().toString(36);
+
 const nextConfig: NextConfig = {
+  generateBuildId: async () => buildId,
+  env: { NEXT_PUBLIC_BUILD_ID: buildId },
   // `npm run dev` only accepts its own hostname by default, so opening it
   // from another device on the Wi-Fi (http://192.168.x.x:3000) loaded the
   // HTML but blocked the dev scripts: React never hydrated and no button

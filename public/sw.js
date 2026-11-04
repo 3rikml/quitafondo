@@ -7,7 +7,10 @@
 // - Pages and everything else same-origin are network-first, falling back to
 //   the cached copy when offline, so a new deploy shows up on the next visit.
 
-const CACHE = "quitafondo-v1";
+// The page registers this worker as /sw.js?v=<build id>, so every deploy gets
+// its own cache and a fresh install (which precaches the new shell).
+const VERSION = new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE = `quitafondo-${VERSION}`;
 // Pages and other same-origin files are kept for offline use; the oldest go first.
 const MAX_ENTRIES = 80;
 
@@ -25,8 +28,31 @@ async function remember(request, response) {
   }
 }
 
-self.addEventListener("install", () => {
-  self.skipWaiting();
+const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
+
+// Caches the page, its hashed build assets and the icons up front, so the app
+// opens offline even if the first visit was interrupted before everything
+// loaded. Best-effort: a failed entry never blocks the install.
+async function precacheShell() {
+  const cache = await caches.open(CACHE);
+  const add = async (url) => {
+    try {
+      const response = await fetch(url, { cache: "reload" });
+      if (response.ok) {
+        await cache.put(url, response.clone());
+        return response;
+      }
+    } catch {}
+    return null;
+  };
+  const results = await Promise.all(SHELL.map(add));
+  const html = results[0] ? await results[0].text() : "";
+  const assets = new Set(html.match(/\/_next\/static\/[^"'\s\\)]+/g) ?? []);
+  await Promise.all([...assets].map(add));
+}
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(precacheShell().finally(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {

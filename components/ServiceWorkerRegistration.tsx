@@ -10,7 +10,7 @@ import { useEffect } from "react";
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch((error) => {
+    navigator.serviceWorker.register(`/sw.js?v=${process.env.NEXT_PUBLIC_BUILD_ID ?? "dev"}`, { scope: "/", updateViaCache: "none" }).catch((error) => {
       console.warn("No se pudo registrar el service worker; la app seguirá funcionando sin modo offline.", error);
     });
   }, []);
