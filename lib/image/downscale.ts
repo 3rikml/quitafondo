@@ -38,7 +38,7 @@ export async function downscaleIfHuge(
       typeof OffscreenCanvas !== "undefined"
         ? new OffscreenCanvas(target.width, target.height)
         : Object.assign(document.createElement("canvas"), { width: target.width, height: target.height });
-    const ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(bitmap, 0, 0, target.width, target.height);
     const blob =
