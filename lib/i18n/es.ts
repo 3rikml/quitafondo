@@ -23,6 +23,11 @@ export const es = {
   "topbar.highQuality": "Recorte de máxima calidad",
   "topbar.highQualityHint": "Conserva mejor el pelo y los bordes, pero es más lento (~1 min por foto) y descarga ~220 MB la primera vez. Solo cambia algo en equipos sin una GPU compatible con el mejor modelo, como los Mac con Apple Silicon. Se aplica a las próximas fotos.",
   "topbar.language": "Idioma",
+  "topbar.models": "Modelos de IA",
+  "topbar.clearModels": "Borrar modelos descargados",
+  "topbar.clearModelsConfirm": "¿Seguro? Se volverán a descargar al usarlos",
+  "toast.modelsCleared": "Modelos borrados de este equipo",
+  "toast.modelsNone": "No había modelos descargados",
 
   "download.menu": "Opciones de descarga",
   "download.format": "Formato",
@@ -208,6 +213,8 @@ export const es = {
   "eraser.hint": "Pinta sobre lo que quieres eliminar de la foto (una persona al fondo, un logo, una mancha) y la IA lo rellena.",
   "eraser.firstUse": "La primera vez descarga el modelo (~208 MB). Cada borrado tarda unos 10 s.",
   "eraser.apply": "Borrar lo pintado",
+  "eraser.applyDownload": "Descargar modelo (~208 MB) y borrar",
+  "eraser.ready": "Cada borrado tarda unos 10 s.",
   "eraser.clear": "Limpiar trazo",
   "eraser.undo": "Deshacer borrado",
   "eraser.downloading": "Descargando el modelo del borrador (solo la primera vez)… {percent}%",
@@ -222,6 +229,12 @@ export const es = {
   "error.unreadable": "No se pudo leer esta imagen. Prueba con PNG, JPG o WebP.",
   "error.convertFailed": "No se pudo convertir esta imagen a un formato compatible.",
   "error.unknown": "Error desconocido",
+  "error.outOfMemory": "Tu equipo se quedó sin memoria con esta foto. Prueba con una imagen más pequeña o cierra otras pestañas.",
+  "error.network": "No se pudo descargar el modelo de IA. Revisa tu conexión e inténtalo de nuevo.",
+  "boundary.title": "Algo salió mal",
+  "boundary.body": "La aplicación tuvo un error inesperado. Tus fotos siguen guardadas en este equipo.",
+  "boundary.retry": "Reintentar",
+  "boundary.reload": "Recargar la página",
 } as const;
 
 export type MessageKey = keyof typeof es;

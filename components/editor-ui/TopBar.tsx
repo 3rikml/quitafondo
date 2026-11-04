@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { getHighQuality, setHighQuality, subscribeHighQuality } from "@/lib/ai/client";
 import { setLocale, useLocale, useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { clearModelCache } from "@/lib/ai/modelCache";
+import { toast } from "@/components/ui/toast";
 import { ShortcutsList } from "./ShortcutsList";
 
 interface TopBarProps {
@@ -42,6 +44,32 @@ function useTheme(): ["dark" | "light", (theme: "dark" | "light") => void] {
     }
   };
   return [theme, apply];
+}
+
+/** Two-step button: the first click asks, the second deletes every downloaded model. */
+function ClearModelsButton() {
+  const t = useT();
+  const [confirming, setConfirming] = useState(false);
+  async function clear() {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setConfirming(false);
+    const removed = await clearModelCache();
+    toast.add({ title: t(removed > 0 ? "toast.modelsCleared" : "toast.modelsNone"), type: "success" });
+  }
+  return (
+    <Button
+      size="sm"
+      variant={confirming ? "destructive" : "outline"}
+      onClick={clear}
+      onBlur={() => setConfirming(false)}
+      className="h-auto min-h-8 whitespace-normal"
+    >
+      {confirming ? t("topbar.clearModelsConfirm") : t("topbar.clearModels")}
+    </Button>
+  );
 }
 
 export function TopBar({
@@ -117,6 +145,8 @@ export function TopBar({
                   <TabsTrigger value="en">English</TabsTrigger>
                 </TabsList>
               </Tabs>
+              <span className="text-muted-foreground">{t("topbar.models")}</span>
+              <ClearModelsButton />
             </div>
             <div className="flex flex-col gap-1.5 border-t pt-3">
               <div className="flex items-center justify-between gap-3">

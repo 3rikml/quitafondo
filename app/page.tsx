@@ -9,7 +9,8 @@ import { useT } from "@/lib/i18n";
 import { useBatchQueue } from "@/hooks/useBatchQueue";
 import { useGlobalImageInput } from "@/hooks/useGlobalImageInput";
 import { useRetouch } from "@/hooks/useRetouch";
-import { useEditorHistory, type HistoryEntry } from "@/hooks/useEditorHistory";
+import { useEditorHistory } from "@/hooks/useEditorHistory";
+import { useCanvasGestures } from "@/hooks/useCanvasGestures";
 import { useCropTool } from "@/hooks/useCropTool";
 import { useSubjectTransform } from "@/hooks/useSubjectTransform";
 import { magicStatusText, useMagicSelect } from "@/hooks/useMagicSelect";
@@ -17,7 +18,6 @@ import { eraserStatusText, useMagicEraser } from "@/hooks/useMagicEraser";
 import { useZipExport } from "@/hooks/useZipExport";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { toast } from "@/components/ui/toast";
-import { canvasToSourceCoords } from "@/components/Editor/RetouchToolbar";
 import { EditorCanvas, type EditorCanvasHandle } from "@/components/Editor/EditorCanvas";
 import { CompareOverlay, CropOverlay, SubjectHandles } from "@/components/Editor/CanvasOverlays";
 import { ProcessingView } from "@/components/Editor/ProcessingView";
@@ -34,6 +34,7 @@ import { flipMagicMode } from "@/lib/ai/samMask";
 import { useStageNavigation } from "@/hooks/useStageNavigation";
 import { DropHint, UnsupportedBrowserBanner } from "@/components/editor-ui/Overlays";
 import { TOOLS, type EditorTool } from "@/components/editor-ui/tools";
+import { resolveShortcut } from "@/lib/editor/shortcuts";
 
 export default function Home() {
   const t = useT();
@@ -52,8 +53,6 @@ export default function Home() {
 
   // Zoom and pan of the stage (wheel, pinch, Space + drag).
   const [stageElement, setStageElement] = useState<HTMLElement | null>(null);
-  const stageNav = useStageNavigation(stageElement, handleCanvasPointerUp);
-  const { view } = stageNav;
   // Before/after comparison: null while off, otherwise the 0-1 divider position.
   const [compareSplit, setCompareSplit] = useState<number | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -75,9 +74,6 @@ export default function Home() {
     observer.observe(stageArea);
     return () => observer.disconnect();
   }, [stageArea]);
-  // State right before the current brush stroke, recorded as one undo step on pointerup.
-  const strokeStartRef = useRef<HistoryEntry | null>(null);
-
   const retouch = useRetouch(selectedJob?.id ?? null, canvasHandleRef);
   // Retouching is on exactly while the Retoque tool is open.
   const retouchActive = activeTool === "retouch";
@@ -87,8 +83,6 @@ export default function Home() {
   const subject = useSubjectTransform(editorDeps);
   const eraser = useMagicEraser({ selectedJob, canvasHandleRef, replaceJobImages });
   const erasing = retouchActive && retouch.tool === "eraser";
-  // True while the pointer is down painting eraser strokes.
-  const eraserStrokeRef = useRef(false);
   const magic = useMagicSelect({
     selectedJob,
     active: retouchActive && retouch.tool === "magic",
@@ -97,6 +91,20 @@ export default function Home() {
     onOverridesChanged: retouch.scheduleRedraw,
   });
   const zip = useZipExport(jobs, (jobId) => retouch.overridesByJobIdRef.current.get(jobId));
+  const gestures = useCanvasGestures({
+    selectedJob,
+    canvasHandleRef,
+    cropActive: crop.active,
+    retouchActive,
+    erasing,
+    retouch,
+    eraser,
+    magic,
+    history,
+    subject,
+  });
+  const stageNav = useStageNavigation(stageElement, gestures.onPointerUp);
+  const { view } = stageNav;
 
   function selectTool(tool: EditorTool) {
     const current = isDesktop ? desktopTool : mobileTool;
@@ -198,116 +206,41 @@ export default function Home() {
     }
   }
 
-  // Canvas gestures: a brush stroke while retouching, otherwise dragging the subject.
-  function handleCanvasPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (crop.active || !selectedJob) return;
-    // Right/middle clicks open the context menu or pan: no stroke, no drag.
-    if (e.button !== 0) return;
-    const canvas = e.currentTarget.querySelector("canvas");
-    if (erasing) {
-      if (!canvas) return;
-      eraserStrokeRef.current = true;
-      e.currentTarget.setPointerCapture(e.pointerId); // the stroke ends even if released off the stage
-      eraser.paintAt(canvas, e.clientX, e.clientY, retouch.toolbarProps.brushSize, true);
-      return;
-    }
-    if (retouchActive && retouch.tool === "magic") {
-      const fit = canvasHandleRef.current?.getFit();
-      if (!canvas || !fit) return;
-      const { x, y } = canvasToSourceCoords(canvas, fit, e.clientX, e.clientY);
-      // Alt/Option flips the action, so both are one click away.
-      magic.selectAt(x, y, flipMagicMode(magic.mode, e.altKey));
-      return;
-    }
-    if (retouchActive) {
-      magic.forget(); // a size change after this stroke would overwrite it
-      strokeStartRef.current = history.snapshot(selectedJob);
-      e.currentTarget.setPointerCapture(e.pointerId);
-      if (canvas) retouch.paintAt(canvas, e.clientX, e.clientY, true);
-      return;
-    }
-    subject.startDrag(e.clientX, e.clientY);
-  }
-
-  function handleCanvasPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    const canvas = e.currentTarget.querySelector("canvas");
-    if (!canvas) return;
-    // A button release we never saw (context menu, alt-tab) must not leave a stroke running.
-    if ((eraserStrokeRef.current || strokeStartRef.current) && !(e.buttons & 1)) {
-      handleCanvasPointerUp();
-      return;
-    }
-    if (erasing) {
-      if (eraserStrokeRef.current) eraser.paintAt(canvas, e.clientX, e.clientY, retouch.toolbarProps.brushSize);
-      return;
-    }
-    if (retouchActive) {
-      if (strokeStartRef.current) retouch.paintAt(canvas, e.clientX, e.clientY);
-      return;
-    }
-    subject.moveDrag(canvas, e.clientX, e.clientY);
-  }
-
-  function handleCanvasPointerUp() {
-    eraserStrokeRef.current = false;
-    const strokeStart = strokeStartRef.current;
-    strokeStartRef.current = null;
-    if (strokeStart && selectedJob) history.record(selectedJob.id, strokeStart);
-    subject.endDrag();
-  }
-
-  // Keyboard shortcuts (listed in the preferences menu). Ignored while typing
-  // in a field; single-key ones only act on a finished image.
+  // Keyboard shortcuts (listed in the preferences menu); the key map lives in lib/editor/shortcuts.ts.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      const key = e.key.toLowerCase();
-      const modifier = e.ctrlKey || e.metaKey;
-      // Menus, lists and dialogs use letters/digits for their own typeahead.
-      const inOverlay = target?.closest('select, [role="menu"], [role="listbox"], [role="combobox"], [role="dialog"]');
-
-      if (crop.active && (e.key === "Enter" || e.key === "Escape")) {
-        e.preventDefault();
-        if (e.key === "Enter") crop.apply();
-        else crop.cancel();
-        return;
-      }
-      if (modifier && key === "z") {
-        e.preventDefault();
-        if (e.shiftKey) redo();
-        else undo();
-        return;
-      }
-      if (modifier && key === "y") {
-        e.preventDefault();
-        redo();
-        return;
-      }
-      if (inOverlay) return;
-      if (!editing || !selectedJob) return;
-      if (modifier && e.shiftKey && key === "c") {
-        e.preventDefault();
-        handleCopy();
-        return;
-      }
-      if (modifier || e.altKey) return;
+      const action = resolveShortcut(e, {
+        cropActive: crop.active,
+        editing: Boolean(editing && selectedJob),
+        canCompare: Boolean(selectedJob?.originalUrl),
+        comparing: compareSplit !== null,
+        retouchActive,
+        toolOpen: activeTool !== null,
+        // Menus, lists and dialogs use letters/digits for their own typeahead.
+        inOverlay: Boolean(target?.closest('select, [role="menu"], [role="listbox"], [role="combobox"], [role="dialog"]')),
+        tools: TOOLS,
+      });
+      if (!action) return;
       const brush = retouch.toolbarProps;
-      const tool = TOOLS.find((item) => item.key === e.key);
-      if (tool) selectTool(tool.id);
-      else if (key === "d") handleQuickDownload();
-      else if (key === "c" && selectedJob.originalUrl) setCompareSplit((split) => (split === null ? 0.5 : null));
-      else if (key === "b") selectTool("retouch");
-      else if (e.key === "0") stageNav.fit();
-      else if (e.key === "+" || e.key === "=") stageNav.setZoom(view.zoom * 1.25);
-      else if (e.key === "-") stageNav.setZoom(view.zoom / 1.25);
-      else if (e.key === "[" && retouchActive) brush.onBrushSizeChange(Math.max(4, brush.brushSize - 4));
-      else if (e.key === "]" && retouchActive) brush.onBrushSizeChange(Math.min(120, brush.brushSize + 4));
-      else if (e.key === "Escape") {
-        if (compareSplit !== null) setCompareSplit(null);
-        else if (activeTool) closeTool();
-        else return;
-      } else return;
+      switch (action.type) {
+        case "crop-apply": crop.apply(); break;
+        case "crop-cancel": crop.cancel(); break;
+        case "undo": undo(); break;
+        case "redo": redo(); break;
+        case "copy": handleCopy(); break;
+        case "download": handleQuickDownload(); break;
+        case "toggle-compare": setCompareSplit((split) => (split === null ? 0.5 : null)); break;
+        case "close-compare": setCompareSplit(null); break;
+        case "close-tool": closeTool(); break;
+        case "select-tool": selectTool(action.tool as EditorTool); break;
+        case "zoom-fit": stageNav.fit(); break;
+        case "zoom-in": stageNav.setZoom(view.zoom * 1.25); break;
+        case "zoom-out": stageNav.setZoom(view.zoom / 1.25); break;
+        case "brush-smaller": brush.onBrushSizeChange(Math.max(4, brush.brushSize - 4)); break;
+        case "brush-larger": brush.onBrushSizeChange(Math.min(120, brush.brushSize + 4)); break;
+      }
       e.preventDefault();
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -440,6 +373,7 @@ export default function Home() {
               canErase: eraser.hasMask,
               canUndo: eraser.canUndo,
               busy: eraser.status.kind === "working",
+              needsDownload: eraser.needsDownload,
               statusText: eraserStatusText(eraser.status),
               onErase: eraser.erase,
               onClear: eraser.clear,
@@ -496,10 +430,10 @@ export default function Home() {
                 <>
                   <div
                     ref={setStageArea}
-                    onPointerDown={handleCanvasPointerDown}
-                    onPointerMove={handleCanvasPointerMove}
-                    onPointerUp={handleCanvasPointerUp}
-                    onPointerLeave={handleCanvasPointerUp}
+                    onPointerDown={gestures.onPointerDown}
+                    onPointerMove={gestures.onPointerMove}
+                    onPointerUp={gestures.onPointerUp}
+                    onPointerLeave={gestures.onPointerUp}
                     className={cn(
                       "flex h-full w-full items-center justify-center",
                       navCursor ??

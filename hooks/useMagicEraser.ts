@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import type { ImageJob } from "@/lib/types";
 import { runInpaint } from "@/lib/ai/client";
 import { DOWNLOAD_PROGRESS_SHARE } from "@/lib/ai/protocol";
+import { friendlyAiError } from "@/lib/ai/friendlyError";
+import { isModelCached } from "@/lib/ai/modelCache";
 import { t } from "@/lib/i18n";
 import { toast } from "@/components/ui/toast";
 import { forEachDabAlong, type Point } from "@/lib/editor/strokePath";
@@ -38,6 +40,17 @@ export function useMagicEraser({ selectedJob, canvasHandleRef, replaceJobImages 
   // Bumped to redraw the red mask overlay / re-read the ref-backed state.
   const [version, setVersion] = useState(0);
   const [status, setStatus] = useState<EraserStatus>({ kind: "idle" });
+  // Whether LaMa (~208 MB) is already on this device; until it is, the button says it will download.
+  const [modelCached, setModelCached] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    isModelCached().then((cached) => {
+      if (!cancelled) setModelCached(cached);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(
     () => () => {
@@ -106,11 +119,12 @@ export function useMagicEraser({ selectedJob, canvasHandleRef, replaceJobImages 
       undoRef.current.set(job.id, stack);
       mask.fill(0);
       replaceJobImages(job.id, result.original, result.cutout);
+      setModelCached(true);
       setStatus({ kind: "idle" });
       // Erasing takes ~10 s, so say clearly when it is done.
       toast.add({ title: t("toast.eraseDone"), type: "success" });
     } catch (error) {
-      setStatus({ kind: "error", message: error instanceof Error ? error.message : String(error) });
+      setStatus({ kind: "error", message: friendlyAiError(error) });
     }
     setVersion((v) => v + 1);
   }
@@ -133,7 +147,7 @@ export function useMagicEraser({ selectedJob, canvasHandleRef, replaceJobImages 
   const canUndo = jobId !== null && (undoRef.current.get(jobId)?.length ?? 0) > 0;
   /* eslint-enable react-hooks/refs */
 
-  return { mask, version, hasMask, canUndo, status, paintAt, clear, erase, undo, forget };
+  return { mask, version, hasMask, canUndo, needsDownload: !modelCached, status, paintAt, clear, erase, undo, forget };
 }
 
 export function eraserStatusText(status: EraserStatus): string | null {

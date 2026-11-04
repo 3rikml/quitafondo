@@ -9,6 +9,7 @@ import {
   type Processor,
   type Tensor,
 } from "@huggingface/transformers";
+import { MODEL_CACHE_NAME } from "./modelCache";
 // The exact entry Transformers.js uses, so both share one ONNX Runtime
 // instance and the WASM binaries it already configured.
 import * as ort from "onnxruntime-web/webgpu";
@@ -173,7 +174,7 @@ async function getLoaded<T>(task: AiTask, id: number): Promise<Loaded<T>> {
 
 /** Downloads a model file once, reporting progress, and keeps it in Cache Storage for later visits. */
 async function fetchModel(url: string, expectedBytes: number, onProgress: (ratio: number) => void): Promise<Uint8Array> {
-  const cache = await caches.open("quitafondo-models").catch(() => null);
+  const cache = await caches.open(MODEL_CACHE_NAME).catch(() => null);
   const cached = await cache?.match(url);
   if (cached) return new Uint8Array(await cached.arrayBuffer());
 

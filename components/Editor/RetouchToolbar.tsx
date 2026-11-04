@@ -56,6 +56,8 @@ export interface RetouchToolbarProps {
     canErase: boolean;
     canUndo: boolean;
     busy: boolean;
+    /** The model is not on this device yet, so erasing starts a ~208 MB download. */
+    needsDownload: boolean;
     statusText: string | null;
     onErase: () => void;
     onClear: () => void;
@@ -177,7 +179,7 @@ export function RetouchToolbar({
           {brushSizeRow}
           <Button onClick={eraser.onErase} disabled={!eraser.canErase || eraser.busy}>
             <Bandage />
-            {t("eraser.apply")}
+            {t(eraser.needsDownload ? "eraser.applyDownload" : "eraser.apply")}
           </Button>
           <div className="grid grid-cols-2 gap-1.5">
             <Button size="sm" variant="ghost" onClick={eraser.onClear} disabled={!eraser.canErase || eraser.busy}>
@@ -190,7 +192,7 @@ export function RetouchToolbar({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground" aria-live="polite">
-            {eraser.statusText ?? t("eraser.firstUse")}
+            {eraser.statusText ?? (eraser.needsDownload ? t("eraser.firstUse") : t("eraser.ready"))}
           </p>
         </PanelSection>
       )}

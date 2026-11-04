@@ -8,6 +8,7 @@ import { downscaleIfHuge } from "@/lib/image/downscale";
 import { scaleCanvasConfig } from "@/lib/image/canvasFit";
 import { t } from "@/lib/i18n";
 import { toast } from "@/components/ui/toast";
+import { friendlyAiError } from "@/lib/ai/friendlyError";
 import { isBackgroundRemovalSupported, validateImageFile } from "@/lib/image/fileValidation";
 import { toPersistedJob, fromPersistedJob } from "@/lib/storage/schema";
 import { saveJob, loadAllJobs, deleteJob as deletePersistedJob } from "@/lib/storage/db";
@@ -175,7 +176,7 @@ export function useBatchQueue() {
           if (error instanceof StaleRun || runTokensRef.current.get(id) !== token) return;
           updateJob(id, {
             status: "error",
-            errorMessage: error instanceof Error ? error.message : t("error.unknown"),
+            errorMessage: friendlyAiError(error),
             progress: undefined,
           });
         })

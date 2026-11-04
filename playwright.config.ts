@@ -20,9 +20,17 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   // PLAYWRIGHT_CHANNEL=chrome runs the locally installed Chrome instead of
-  // Playwright's bundled Chromium (`npx playwright install chromium`).
+  // Playwright's bundled Chromium (`npx playwright install chromium`);
+  // PW_CHROMIUM_PATH=/usr/bin/chromium points at any other installed browser.
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"], channel: process.env.PLAYWRIGHT_CHANNEL || undefined } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
+        launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined },
+      },
+    },
   ],
   webServer: {
     command: "npm run start",
