@@ -32,7 +32,7 @@ test("the magic eraser fills a painted object with its surroundings, and can be 
 
   const undo = page.getByRole("button", { name: "Deshacer borrado" });
   await expect(undo).toBeDisabled();
-  await page.getByRole("button", { name: "Borrar lo pintado" }).click();
+  await page.getByRole("button", { name: /Borrar lo pintado|Descargar modelo/ }).click();
   await expect(undo).toBeEnabled({ timeout: 400_000 });
 
   // The square is now filled with the disc's red.

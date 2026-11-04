@@ -40,8 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# internal planning notes, not meant for the public repo
-/docs/superpowers/
+# internal notes, not meant for the public repo
+/docs/internal/
 
 
 # playwright
