@@ -6,7 +6,7 @@ Ideas y pendientes, en orden de prioridad. ¿Quieres tomar alguno? Abre un issue
 
 ## 1. Demo y presentación
 
-- [ ] Demo en vivo (Vercel o GitHub Pages), comprobando las cabeceras de aislamiento (COOP/COEP) que necesita ONNX Runtime y la descarga de los modelos desde ese dominio.
+- [x] Demo en vivo en https://quitafondo-xi.vercel.app (Vercel), comprobando las cabeceras de aislamiento (COOP/COEP) que necesita ONNX Runtime y la descarga de los modelos desde ese dominio.
 - [x] GIF corto en el README: subir foto → quitar fondo → elegir fondo.
 - [x] Capturas en tema oscuro y claro, e imagen de vista previa para redes (Open Graph).
 - [x] Insignias (CI, licencia) y temas del repositorio en GitHub.

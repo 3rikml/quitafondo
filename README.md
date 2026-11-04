@@ -5,6 +5,8 @@
 [![CI](https://github.com/3rikml/quitafondo/actions/workflows/ci.yml/badge.svg)](https://github.com/3rikml/quitafondo/actions/workflows/ci.yml)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](./LICENSE)
 
+**[Probar la demo en vivo →](https://quitafondo-xi.vercel.app)**
+
 ![QuitaFondo: subir una foto, quitar el fondo y elegir uno nuevo](./docs/demo.gif)
 
 QuitaFondo es un editor de imágenes en el navegador para quitar el fondo de fotos, reencuadrarlas y exportarlas en lote. Todo el procesamiento ocurre **100% en el cliente** (WebGPU/WebAssembly): no hay backend, no se suben imágenes a ningún servidor y no se requiere ninguna API key.
@@ -128,6 +130,8 @@ MIT — ver [LICENSE](./LICENSE).
 
 [![CI](https://github.com/3rikml/quitafondo/actions/workflows/ci.yml/badge.svg)](https://github.com/3rikml/quitafondo/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
+**[Try the live demo →](https://quitafondo-xi.vercel.app)**
 
 ![QuitaFondo: upload a photo, remove the background and pick a new one](./docs/demo.gif)
 
