@@ -30,7 +30,6 @@ import { Filmstrip } from "@/components/editor-ui/Filmstrip";
 import { WelcomeView } from "@/components/editor-ui/WelcomeView";
 import { StageHint, ZoomPill } from "@/components/editor-ui/StageControls";
 import { BrushCursor, type BrushCursorVariant } from "@/components/editor-ui/BrushCursor";
-import { flipMagicMode } from "@/lib/ai/samMask";
 import { useStageNavigation } from "@/hooks/useStageNavigation";
 import { DropHint, UnsupportedBrowserBanner } from "@/components/editor-ui/Overlays";
 import { TOOLS, type EditorTool } from "@/components/editor-ui/tools";
