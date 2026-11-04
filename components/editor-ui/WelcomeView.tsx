@@ -2,7 +2,8 @@
 
 import { useRef } from "react";
 import { HeartHandshake, ImagePlus, ShieldCheck, UserRoundX } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
 /**
@@ -28,9 +29,10 @@ export function WelcomeView({ onFiles }: { onFiles: (files: File[]) => void }) {
             <span className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{t("welcome.title")}</span>
             <span className="text-sm text-muted-foreground sm:text-base">{t("welcome.subtitle")}</span>
           </span>
-          <Button render={<span />} nativeButton={false} className="pointer-events-none h-10 px-5 text-sm font-semibold">
+          {/* Looks like a button but is plain text: the whole card is the one real button. */}
+          <span className={cn(buttonVariants(), "pointer-events-none h-10 px-5 text-sm font-semibold")}>
             {t("welcome.choose")}
-          </Button>
+          </span>
         </button>
         <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
           <li className="flex items-center gap-1.5">
