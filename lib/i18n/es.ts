@@ -42,6 +42,8 @@ export const es = {
   "welcome.title": "Quita el fondo de tus fotos",
   "welcome.subtitle": "Suelta tus fotos aquí, pégalas con Ctrl+V o elígelas desde tu equipo.",
   "welcome.choose": "Elegir fotos",
+  "welcome.sample": "O prueba con una foto de ejemplo",
+  "welcome.sampleError": "No se pudo cargar la foto de ejemplo.",
   "welcome.badgeLocal": "100% en tu navegador",
   "welcome.badgeFree": "Gratis y open source",
   "welcome.badgeNoSignup": "Sin registro",

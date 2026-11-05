@@ -44,6 +44,8 @@ export const en: Record<MessageKey, string> = {
   "welcome.title": "Remove the background from your photos",
   "welcome.subtitle": "Drop your photos here, paste them with Ctrl+V or pick them from your device.",
   "welcome.choose": "Choose photos",
+  "welcome.sample": "Or try a sample photo",
+  "welcome.sampleError": "Could not load the sample photo.",
   "welcome.badgeLocal": "100% in your browser",
   "welcome.badgeFree": "Free and open source",
   "welcome.badgeNoSignup": "No sign-up",

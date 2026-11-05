@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { HeartHandshake, ImagePlus, ShieldCheck, UserRoundX } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,19 @@ import { useT } from "@/lib/i18n";
 export function WelcomeView({ onFiles }: { onFiles: (files: File[]) => void }) {
   const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [sampleFailed, setSampleFailed] = useState(false);
+
+  async function trySample() {
+    setSampleFailed(false);
+    try {
+      const response = await fetch("/sample.jpg");
+      if (!response.ok) throw new Error(String(response.status));
+      const blob = await response.blob();
+      onFiles([new File([blob], "ejemplo.jpg", { type: "image/jpeg" })]);
+    } catch {
+      setSampleFailed(true);
+    }
+  }
 
   return (
     <div className="flex h-full w-full items-center justify-center p-6">
@@ -34,6 +47,20 @@ export function WelcomeView({ onFiles }: { onFiles: (files: File[]) => void }) {
             {t("welcome.choose")}
           </span>
         </button>
+        <div className="-mt-3 flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={trySample}
+            className="rounded-md px-2 py-1 text-sm font-medium text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            {t("welcome.sample")}
+          </button>
+          {sampleFailed && (
+            <p role="status" className="text-xs text-destructive">
+              {t("welcome.sampleError")}
+            </p>
+          )}
+        </div>
         <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
           <li className="flex items-center gap-1.5">
             <ShieldCheck className="size-4 text-primary" />
