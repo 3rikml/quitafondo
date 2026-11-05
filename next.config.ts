@@ -5,6 +5,8 @@ import type { NextConfig } from "next";
 const buildId = Date.now().toString(36);
 
 const nextConfig: NextConfig = {
+  // `next dev` would otherwise write AGENTS.md / CLAUDE.md into the repo root.
+  agentRules: false,
   generateBuildId: async () => buildId,
   env: { NEXT_PUBLIC_BUILD_ID: buildId },
   // `npm run dev` only accepts its own hostname by default, so opening it

@@ -47,3 +47,7 @@ next-env.d.ts
 # playwright
 /test-results/
 /playwright-report/
+
+# files some tools generate in the repo root
+/AGENTS.md
+/CLAUDE.md
