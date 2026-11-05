@@ -33,3 +33,18 @@ export async function clearModelCache(): Promise<number> {
   }
   return removed;
 }
+
+/** Substrings of the Hugging Face URLs of the cutout models Transformers.js keeps in its own cache. */
+const SEGMENT_MODEL_MARKERS = ["BiRefNet_lite-ONNX", "isnet-general-onnx", "BEN2-ONNX"];
+
+/** True when a cutout model's files are already on this device, so removing a background needs no download. */
+export async function isSegmentModelCached(): Promise<boolean> {
+  if (!hasCacheStorage()) return false;
+  try {
+    const cache = await caches.open("transformers-cache");
+    const keys = await cache.keys();
+    return keys.some((request) => SEGMENT_MODEL_MARKERS.some((marker) => request.url.includes(marker)));
+  } catch {
+    return false;
+  }
+}

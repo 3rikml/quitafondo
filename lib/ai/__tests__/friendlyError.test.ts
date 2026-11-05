@@ -13,6 +13,16 @@ describe("friendlyAiError", () => {
     expect(friendlyAiError(new Error("No se pudo descargar el modelo (503)."))).toBe(t("error.network"));
   });
 
+  it("says so when the device is offline", () => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    Object.defineProperty(globalThis, "navigator", { value: { onLine: false }, configurable: true });
+    try {
+      expect(friendlyAiError(new TypeError("Failed to fetch"))).toBe(t("error.offline"));
+    } finally {
+      if (original) Object.defineProperty(globalThis, "navigator", original);
+    }
+  });
+
   it("keeps other messages and falls back for empty ones", () => {
     expect(friendlyAiError(new Error("boom"))).toBe("boom");
     expect(friendlyAiError(undefined)).toBe(t("error.unknown"));

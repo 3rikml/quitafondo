@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toast";
+import { ModelDownloadDialog } from "@/components/editor-ui/ModelDownloadDialog";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -72,6 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <ServiceWorkerRegistration />
         <TooltipProvider delay={300}>
           <Toaster>{children}</Toaster>
+          <ModelDownloadDialog />
         </TooltipProvider>
       </body>
     </html>

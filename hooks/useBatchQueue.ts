@@ -9,6 +9,7 @@ import { scaleCanvasConfig } from "@/lib/image/canvasFit";
 import { t } from "@/lib/i18n";
 import { toast } from "@/components/ui/toast";
 import { friendlyAiError } from "@/lib/ai/friendlyError";
+import { ensureModelDownloadConsent } from "@/lib/ai/downloadConsent";
 import { isBackgroundRemovalSupported, validateImageFile } from "@/lib/image/fileValidation";
 import { toPersistedJob, fromPersistedJob } from "@/lib/storage/schema";
 import { saveJob, loadAllJobs, deleteJob as deletePersistedJob } from "@/lib/storage/db";
@@ -143,7 +144,12 @@ export function useBatchQueue() {
       // Reduce huge photos first, and use the reduced copy as the job's
       // original too: retouch color repair and edge cleanup need the original
       // and the cutout to have identical dimensions.
-      downscaleIfHuge(file)
+      ensureModelDownloadConsent()
+        .then((accepted) => {
+          if (!accepted) throw new Error(t("download.declined"));
+          assertCurrent();
+          return downscaleIfHuge(file);
+        })
         .then((reduced) => {
           assertCurrent();
           if (!reduced) return file;
