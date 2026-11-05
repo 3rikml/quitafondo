@@ -86,6 +86,8 @@ const loaded = new Map<AiTask, Promise<Loaded<unknown>>>();
 const wasmOnlyTasks = new Set<AiTask>();
 /** The user asked for the best cutout even if it is slow (only matters without BiRefNet). */
 let preferHighQuality = false;
+/** A device with little RAM or a slow link (see `deviceHints.ts`): the lighter cutout model only. */
+let constrained = false;
 
 function post(message: WorkerResponse, transfer: Transferable[] = []): void {
   self.postMessage(message, transfer);
@@ -105,7 +107,7 @@ function wasmBackend(task: AiTask): Backend {
   if (task === "inpaint") return INPAINT_BACKEND;
   if (task === "upscale") return { device: "wasm", model: UPSCALE_MODELS.wasm };
   if (task === "sam") return { device: "wasm", model: SAM_MODELS.wasm };
-  return { device: "wasm", model: preferHighQuality ? HIGH_QUALITY_FALLBACK_MODEL : COMPATIBLE_MODEL };
+  return { device: "wasm", model: preferHighQuality && !constrained ? HIGH_QUALITY_FALLBACK_MODEL : COMPATIBLE_MODEL };
 }
 
 /** The best model/device pair this browser can run for `task`, best first. */
@@ -116,9 +118,9 @@ async function pickBackend(task: AiTask): Promise<Backend> {
   if (task === "upscale") return { device: "webgpu", model: UPSCALE_MODELS.webgpu };
   if (task === "sam") return { device: "webgpu", model: SAM_MODELS.webgpu };
   const fitsHighQuality = adapter.limits.maxStorageBuffersPerShaderStage >= MIN_STORAGE_BUFFERS_PER_SHADER_STAGE;
-  if (fitsHighQuality) return { device: "webgpu", model: HIGH_QUALITY_MODEL };
+  if (fitsHighQuality && !constrained) return { device: "webgpu", model: HIGH_QUALITY_MODEL };
   // BEN2 cannot allocate its buffers on these adapters: go straight to the CPU.
-  if (preferHighQuality) return wasmBackend(task);
+  if (preferHighQuality && !constrained) return wasmBackend(task);
   return { device: "webgpu", model: COMPATIBLE_MODEL };
 }
 
@@ -413,6 +415,13 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
   if (request.type === "force-wasm") {
     wasmOnlyTasks.add(request.task);
+    return;
+  }
+  if (request.type === "set-constrained") {
+    if (constrained !== request.on) {
+      constrained = request.on;
+      loaded.delete("segment");
+    }
     return;
   }
   if (request.type === "set-quality") {

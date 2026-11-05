@@ -23,6 +23,7 @@ class FakeWorker {
       this.qualityMessages.push(request.high);
       return;
     }
+    if (request.type === "set-constrained") return;
     const { id, image } = request;
     const task = taskOf(request);
     queueMicrotask(async () => {

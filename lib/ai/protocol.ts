@@ -22,6 +22,8 @@ export type WorkerRequest =
   | { type: "force-wasm"; task: AiTask }
   /** The user's cutout-quality choice; see `HIGH_QUALITY_FALLBACK_MODEL`. */
   | { type: "set-quality"; high: boolean }
+  /** Low-RAM / data-saver device: always use the lighter cutout model. */
+  | { type: "set-constrained"; on: boolean }
   | { type: "run"; task: "segment" | "upscale"; id: number; image: Blob }
   /**
    * Magic selection. The worker keeps the SAM image embedding of the last
@@ -36,7 +38,7 @@ export type WorkerRequest =
    */
   | { type: "inpaint"; id: number; image: Blob; cutout: Blob; mask: Uint8Array; width: number; height: number };
 
-export type JobRequest = Exclude<WorkerRequest, { type: "force-wasm" | "set-quality" }>;
+export type JobRequest = Exclude<WorkerRequest, { type: "force-wasm" | "set-quality" | "set-constrained" }>;
 
 /** Which model a job needs. */
 export function taskOf(request: JobRequest): AiTask {

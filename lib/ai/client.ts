@@ -1,3 +1,4 @@
+import { isConstrainedDevice, type DeviceHints } from "./deviceHints";
 import { taskOf, type AiTask, type JobRequest, type MagicPoint, type WorkerRequest, type WorkerResponse } from "./protocol";
 
 interface PendingRequest {
@@ -99,6 +100,10 @@ function getWorker(): Worker {
   const created = new Worker(new URL("./ai.worker.ts", import.meta.url), { type: "module" });
   for (const task of wasmOnlyTasks) send(created, { type: "force-wasm", task });
   send(created, { type: "set-quality", high: getHighQuality() });
+  send(created, {
+    type: "set-constrained",
+    on: isConstrainedDevice(typeof navigator === "undefined" ? undefined : (navigator as DeviceHints)),
+  });
   created.onmessage = (event: MessageEvent<WorkerResponse>) => {
     const message = event.data;
     const request = pending.get(message.id);
