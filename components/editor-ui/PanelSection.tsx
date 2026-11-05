@@ -12,7 +12,7 @@ interface PanelSectionProps {
 /** One titled group inside a tool panel; consecutive sections are separated by a hairline. */
 export function PanelSection({ title, action, className, children }: PanelSectionProps) {
   return (
-    <section className={cn("flex flex-col gap-3 border-t border-border/70 pt-4 first:border-t-0 first:pt-0", className)}>
+    <section className={cn("flex animate-in flex-col gap-3 border-t border-border/70 pt-4 duration-300 fade-in-0 slide-in-from-bottom-1 first:border-t-0 first:pt-0", className)}>
       <div className="flex min-h-7 items-center justify-between gap-2">
         <h3 className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{title}</h3>
         {action}

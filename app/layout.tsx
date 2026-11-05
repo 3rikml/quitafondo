@@ -46,6 +46,19 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "QuitaFondo", statusBarStyle: "default" },
 };
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "QuitaFondo",
+  url: siteUrl,
+  applicationCategory: "MultimediaApplication",
+  operatingSystem: "Any (web browser)",
+  inLanguage: ["es", "en"],
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  description: "Remove image backgrounds 100% in your browser, without uploading anything.",
+};
+
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#121217" },
@@ -62,6 +75,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
+        {/* Open the connections the AI models and the runtime come from, so the first download starts sooner. */}
+        <link rel="preconnect" href="https://huggingface.co" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         {/* Runs before first paint so a saved light-theme choice applies without a flash. */}
         <script
           dangerouslySetInnerHTML={{

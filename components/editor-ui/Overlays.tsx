@@ -18,8 +18,8 @@ export function DropHint() {
   const t = useT();
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-primary bg-card px-12 py-10 text-center shadow-2xl">
-        <UploadCloud className="size-10 text-primary" strokeWidth={1.6} />
+      <div className="qf-glow flex animate-in flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-primary bg-card px-12 py-10 text-center shadow-2xl duration-200 zoom-in-95 fade-in-0">
+        <UploadCloud className="qf-float size-12 text-primary" strokeWidth={1.6} />
         <p className="font-heading text-lg font-semibold">{t("dropzone.dropHint")}</p>
       </div>
     </div>

@@ -28,8 +28,8 @@ export function WelcomeView({ onFiles }: { onFiles: (files: File[]) => void }) {
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center p-6">
-      <div className="flex w-full max-w-xl flex-col items-center gap-8 text-center">
+    <div className="flex h-full w-full overflow-y-auto p-6">
+      <div className="m-auto flex w-full max-w-xl flex-col items-center gap-8 text-center">
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
@@ -75,6 +75,24 @@ export function WelcomeView({ onFiles }: { onFiles: (files: File[]) => void }) {
             {t("welcome.badgeNoSignup")}
           </li>
         </ul>
+        <section aria-labelledby="how-it-works" className="flex w-full flex-col gap-3 text-left">
+          <h2 id="how-it-works" className="text-center text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+            {t("welcome.how.title")}
+          </h2>
+          <ol className="grid gap-3 sm:grid-cols-3">
+            {(["1", "2", "3"] as const).map((n) => (
+              <li key={n} className="flex flex-col gap-1 rounded-xl border border-border/70 bg-card/40 p-3">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+                    {n}
+                  </span>
+                  {t(`welcome.how.step${n}.title`)}
+                </span>
+                <span className="text-xs leading-relaxed text-muted-foreground">{t(`welcome.how.step${n}.body`)}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
         <input
           ref={inputRef}
           type="file"
